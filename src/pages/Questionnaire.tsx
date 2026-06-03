@@ -172,7 +172,7 @@ export default function Questionnaire() {
               <TextField label="จังหวัดที่อาศัย" value={data.province || ''} onChange={v => set('province', v)} />
               <NumberField label="อายุที่ต้องการเกษียณ" value={data.retirementAge || 60} onChange={v => set('retirementAge', v)} min={1} />
               <SelectField label="ระดับการศึกษา" value={data.education || 'ตรี'} options={['ต่ำกว่ามัธยม', 'มัธยม', 'ปวช./ปวส.', 'ตรี', 'โท', 'เอก']} onChange={v => set('education', v)} />
-              <SelectField label="อาชีพ" value={data.occupation || 'พนักงานบริษัท'} options={['ข้าราชการ', 'พนักงานบริษัท', 'เจ้าของธุรกิจ', 'ฟรีแลนซ์', 'นักลงทุน', 'เกษียณ']} onChange={v => set('occupation', v)} />
+              <SelectField label="อาชีพ" value={data.occupation || 'พนักงานบริษัท'} options={['ข้าราชการ', 'พนักงานบริษัท', 'เจ้าของธุรกิจ', 'ฟรีแลนซ์', 'นักลงทุน', 'เกษียณ','นักศึกษา','อาจารย์']} onChange={v => set('occupation', v)} />
               <SelectField label="ความมั่นคงของอาชีพ" value={data.jobStability || 'ปานกลาง'} options={['สูง', 'ปานกลาง', 'ต่ำ']} onChange={v => set('jobStability', v as Answers['jobStability'])} />
               <SelectField label="มีโรคประจำตัว" value={data.hasChronicDisease || 'ไม่มี'} options={['ไม่มี', 'มี']} onChange={v => set('hasChronicDisease', v as Answers['hasChronicDisease'])} />
             </>
