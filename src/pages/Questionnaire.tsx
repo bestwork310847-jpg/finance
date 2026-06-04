@@ -5,6 +5,7 @@ import { computeMetrics } from '../engine/metrics'
 import { computeRiskCoefficient } from '../engine/riskCoefficient'
 import { assessAllRisks } from '../engine/riskCards'
 import type { Answers } from '../engine/types'
+import { db } from '../db'
 
 const TOTAL_STEPS = 11
 
@@ -128,7 +129,7 @@ export default function Questionnaire() {
     setData(prev => ({ ...prev, knowledgeAnswers: arr }))
   }
 
-  function handleSubmit() {
+  async function handleSubmit() {
     const answers = data as Answers
     const metrics = computeMetrics(answers)
     const riskResult = computeRiskCoefficient(metrics, answers)
@@ -137,6 +138,21 @@ export default function Questionnaire() {
     dispatch({ type: 'SET_METRICS', payload: metrics })
     dispatch({ type: 'SET_RISK_RESULT', payload: riskResult })
     dispatch({ type: 'SET_RISK_CARDS', payload: riskCards })
+    // บันทึกข้อมูลลูกค้า (ไม่ block navigation ถ้า save ล้มเหลว)
+    db.saveCustomer({
+      fullName: answers.fullName,
+      age: answers.age,
+      occupation: answers.occupation,
+      province: answers.province,
+      riskLevel: riskResult.riskLevel,
+      riskA: riskResult.A,
+      netWorth: metrics.netWorth,
+      answers,
+      metrics,
+      riskResult,
+      riskCards,
+      allocation: null,
+    }).catch(console.error)
     navigate('/output1')
   }
 

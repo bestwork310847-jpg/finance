@@ -111,9 +111,15 @@ export default function Output1() {
 
         <button
           onClick={() => navigate('/output2')}
-          className="w-full py-3 bg-indigo-600 text-white rounded-xl font-medium hover:bg-indigo-700 text-sm"
+          className="w-full py-3 bg-indigo-600 text-white rounded-xl font-medium hover:bg-indigo-700 text-sm mb-3"
         >
           ดูว่าควรลงทุนแบบไหน →
+        </button>
+        <button
+          onClick={() => navigate('/admin')}
+          className="w-full py-2 border border-gray-300 text-gray-500 rounded-xl text-sm hover:bg-gray-50"
+        >
+          ดูรายชื่อลูกค้าทั้งหมด →
         </button>
 
         <Disclaimer />
