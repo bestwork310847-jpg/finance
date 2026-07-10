@@ -1,20 +1,19 @@
--- รัน SQL นี้ใน Supabase Dashboard → SQL Editor
--- สร้าง 1 ครั้ง แล้วใช้ได้เลย
+-- ============================================================
+-- Finance Advisor — Supabase Schema (v2)
+-- รันทั้งหมดใน SQL Editor ครั้งเดียว
+-- ============================================================
 
-create table if not exists customers (
+create table if not exists assessments (
   id          uuid primary key default gen_random_uuid(),
   created_at  timestamptz default now(),
-
-  -- ข้อมูลสรุป (ค้นหา/กรองได้เร็ว)
-  full_name   text not null,
+  user_id     uuid references auth.users(id) on delete cascade,
+  full_name   text,
   age         int,
   occupation  text,
   province    text,
-  risk_level  text,   -- conservative / moderate / aggressive
+  risk_level  text,
   risk_a      numeric,
   net_worth   numeric,
-
-  -- snapshot เต็ม (JSON)
   answers     jsonb,
   metrics     jsonb,
   risk_result jsonb,
@@ -22,10 +21,26 @@ create table if not exists customers (
   allocation  jsonb
 );
 
--- index สำหรับค้นหา/เรียงลำดับ
-create index if not exists customers_created_at_idx on customers (created_at desc);
-create index if not exists customers_risk_level_idx on customers (risk_level);
-create index if not exists customers_full_name_idx on customers using gin (to_tsvector('simple', full_name));
+create index if not exists assessments_user_id_idx   on assessments (user_id);
+create index if not exists assessments_created_at_idx on assessments (created_at desc);
 
--- Row Level Security (ปิดไว้ก่อน — เปิดเมื่อเพิ่ม auth)
-alter table customers disable row level security;
+alter table assessments enable row level security;
+
+drop policy if exists "users can view own assessments"   on assessments;
+drop policy if exists "users can insert own assessments" on assessments;
+drop policy if exists "users can delete own assessments" on assessments;
+
+create policy "users can view own assessments"
+  on assessments for select
+  using (auth.uid() = user_id);
+
+create policy "users can insert own assessments"
+  on assessments for insert
+  with check (auth.uid() = user_id);
+
+create policy "users can delete own assessments"
+  on assessments for delete
+  using (auth.uid() = user_id);
+
+grant usage on schema public to anon, authenticated;
+grant select, insert, delete on table public.assessments to authenticated;
