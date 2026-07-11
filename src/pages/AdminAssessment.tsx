@@ -121,7 +121,6 @@ export default function AdminAssessment() {
         .map(([k, v]) => ({ name: ASSET_LABELS[k] || k, value: parseFloat((v * 100).toFixed(1)) }))
     : []
 
-  // Optimizer — same computation as Output3, seeded with saved A value
   const { returns, cov } = useMemo(() => buildFrontierData(), [])
   const Rf = CMA.riskFreeRate
   const frontier = useMemo(() => efficientFrontier(returns, cov, 40), [])
@@ -146,7 +145,6 @@ export default function AdminAssessment() {
     return pts
   }, [U, sliderA])
 
-  // Tax — uses saved answers
   const taxResult = useMemo(() => {
     const answers = record.answers
     const taxInput = {
@@ -175,7 +173,6 @@ export default function AdminAssessment() {
   return (
     <div className="min-h-screen bg-gray-50">
       <div className="max-w-2xl mx-auto px-4 py-8">
-        {/* Header */}
         <div className="mb-6">
           <button onClick={() => navigate(`/admin/${userId}`)} className="text-indigo-600 text-sm mb-2">← กลับแฟ้มลูกค้า</button>
           <div className="flex items-start justify-between">
@@ -206,43 +203,17 @@ export default function AdminAssessment() {
         </div>
 
         <div id="admin-assessment-content">
-
-          {/* Metric cards — same as Output1 */}
           {metrics && (
             <div className="grid grid-cols-2 gap-3 mb-8">
-              <MetricCard
-                label="ทรัพย์สินสุทธิ"
-                value={fmtBaht(metrics.netWorth)}
-                color={metrics.netWorth >= 0 ? 'green' : 'red'}
-              />
-              <MetricCard
-                label="เงินสำรองฉุกเฉิน"
-                value={metrics.emergencyMonths !== null ? fmtMonths(metrics.emergencyMonths) : 'ไม่มีข้อมูล'}
-                sub="เป้าหมาย 6 เดือน"
-                color={metrics.emergencyMonths === null ? 'default' : metrics.emergencyMonths >= 6 ? 'green' : metrics.emergencyMonths >= 3 ? 'yellow' : 'red'}
-              />
-              <MetricCard
-                label="อัตราภาระหนี้ (DTI)"
-                value={metrics.dti !== null ? fmtPct(metrics.dti) : 'ไม่มีข้อมูล'}
-                sub="เกิน 40% = อันตราย"
-                color={metrics.dti === null ? 'default' : metrics.dti <= 0.3 ? 'green' : metrics.dti <= 0.4 ? 'yellow' : 'red'}
-              />
-              <MetricCard
-                label="อัตราการออม"
-                value={metrics.savingsRate !== null ? fmtPct(metrics.savingsRate) : 'ไม่มีข้อมูล'}
-                sub="เป้าหมาย 20%+"
-                color={metrics.savingsRate === null ? 'default' : metrics.savingsRate >= 0.2 ? 'green' : metrics.savingsRate >= 0.1 ? 'yellow' : 'red'}
-              />
+              <MetricCard label="ทรัพย์สินสุทธิ" value={fmtBaht(metrics.netWorth)} color={metrics.netWorth >= 0 ? 'green' : 'red'} />
+              <MetricCard label="เงินสำรองฉุกเฉิน" value={metrics.emergencyMonths !== null ? fmtMonths(metrics.emergencyMonths) : 'ไม่มีข้อมูล'} sub="เป้าหมาย 6 เดือน" color={metrics.emergencyMonths === null ? 'default' : metrics.emergencyMonths >= 6 ? 'green' : metrics.emergencyMonths >= 3 ? 'yellow' : 'red'} />
+              <MetricCard label="อัตราภาระหนี้ (DTI)" value={metrics.dti !== null ? fmtPct(metrics.dti) : 'ไม่มีข้อมูล'} sub="เกิน 40% = อันตราย" color={metrics.dti === null ? 'default' : metrics.dti <= 0.3 ? 'green' : metrics.dti <= 0.4 ? 'yellow' : 'red'} />
+              <MetricCard label="อัตราการออม" value={metrics.savingsRate !== null ? fmtPct(metrics.savingsRate) : 'ไม่มีข้อมูล'} sub="เป้าหมาย 20%+" color={metrics.savingsRate === null ? 'default' : metrics.savingsRate >= 0.2 ? 'green' : metrics.savingsRate >= 0.1 ? 'yellow' : 'red'} />
               <MetricCard label="รายได้รวม/เดือน" value={fmtBaht(metrics.totalMonthlyIncome)} />
-              <MetricCard
-                label="คะแนนความรู้การลงทุน"
-                value={`${(metrics.knowledgeScore * 6).toFixed(0)}/6 ข้อ`}
-                color={metrics.knowledgeScore >= 0.67 ? 'green' : metrics.knowledgeScore >= 0.33 ? 'yellow' : 'red'}
-              />
+              <MetricCard label="คะแนนความรู้การลงทุน" value={`${(metrics.knowledgeScore * 6).toFixed(0)}/6 ข้อ`} color={metrics.knowledgeScore >= 0.67 ? 'green' : metrics.knowledgeScore >= 0.33 ? 'yellow' : 'red'} />
             </div>
           )}
 
-          {/* Risk cards — same as Output1 */}
           {riskCards?.length > 0 && (
             <>
               <h2 className="text-lg font-semibold text-gray-800 mb-3">การ์ดความเสี่ยง</h2>
@@ -252,7 +223,6 @@ export default function AdminAssessment() {
             </>
           )}
 
-          {/* Overall risk level — same as Output1 */}
           {riskResult && (
             <div className={`border rounded-xl p-5 mb-6 ${rl.color}`}>
               <div className="flex items-center justify-between mb-2">
@@ -275,7 +245,6 @@ export default function AdminAssessment() {
             </div>
           )}
 
-          {/* Asset allocation — same as Output2 */}
           {alloc && (
             <div className="bg-white rounded-xl shadow-sm p-4 mb-6">
               <h2 className="text-sm font-semibold text-gray-700 mb-3">สัดส่วนสินทรัพย์ที่แนะนำ</h2>
@@ -301,7 +270,6 @@ export default function AdminAssessment() {
             </div>
           )}
 
-          {/* Tangency asset list — same as Output3 */}
           <div className="bg-white rounded-xl shadow-sm p-4 mb-6">
             <h2 className="text-sm font-semibold text-gray-700 mb-3">สินทรัพย์แนะนำ (Tangency Portfolio)</h2>
             <div className="space-y-3">
@@ -333,20 +301,12 @@ export default function AdminAssessment() {
             )}
           </div>
 
-          {/* Efficient frontier — same as Output3 */}
           <div className="bg-white rounded-xl shadow-sm p-4 mb-6">
             <h2 className="text-sm font-semibold text-gray-700 mb-2">Efficient Frontier & จุดที่เหมาะกับลูกค้า</h2>
-            <p className="text-xs text-gray-400 mb-3">
-              จุดสีเขียว = Tangency | จุดสีส้ม = จุดของลูกค้า (ขึ้นกับ A)
-            </p>
+            <p className="text-xs text-gray-400 mb-3">จุดสีเขียว = Tangency | จุดสีส้ม = จุดของลูกค้า (ขึ้นกับ A)</p>
             <div className="flex items-center gap-3 mb-3">
               <span className="text-xs text-gray-500">A = {sliderA.toFixed(1)}</span>
-              <input
-                type="range" min={2} max={8} step={0.1}
-                value={sliderA}
-                onChange={e => setSliderA(parseFloat(e.target.value))}
-                className="flex-1 accent-indigo-600"
-              />
+              <input type="range" min={2} max={8} step={0.1} value={sliderA} onChange={e => setSliderA(parseFloat(e.target.value))} className="flex-1 accent-indigo-600" />
               <span className="text-xs text-gray-400">เสี่ยงน้อย ↔ เสี่ยงมาก</span>
             </div>
             <ResponsiveContainer width="100%" height={300}>
@@ -354,8 +314,7 @@ export default function AdminAssessment() {
                 <XAxis dataKey="sigma" type="number" domain={[0, 25]} label={{ value: 'ความเสี่ยง σ (%)', position: 'insideBottom', offset: -10 }} tick={{ fontSize: 11 }} />
                 <YAxis dataKey="mu" type="number" domain={[0, 15]} label={{ value: 'ผลตอบแทน (%)', angle: -90, position: 'insideLeft', offset: 10 }} tick={{ fontSize: 11 }} />
                 <Tooltip formatter={(v: number) => `${v.toFixed(2)}%`} />
-                <Line data={frontier.map(p => ({ sigma: p.sigma * 100, mu: p.mu * 100 }))}
-                  type="monotone" dataKey="mu" dot={false} stroke="#9ca3af" strokeWidth={2} name="Efficient Frontier" />
+                <Line data={frontier.map(p => ({ sigma: p.sigma * 100, mu: p.mu * 100 }))} type="monotone" dataKey="mu" dot={false} stroke="#9ca3af" strokeWidth={2} name="Efficient Frontier" />
                 <Line data={calPoints} type="linear" dataKey="mu" dot={false} stroke="#6366f1" strokeWidth={2} strokeDasharray="5 5" name="CAL" />
                 <Line data={indiffCurve} type="monotone" dataKey="mu" dot={false} stroke="#f59e0b" strokeWidth={1} strokeDasharray="3 3" name="Indifference" />
                 <ReferenceDot x={tangency.sigma * 100} y={tangency.E * 100} r={6} fill="#22c55e" stroke="#16a34a" strokeWidth={2}>
@@ -381,7 +340,6 @@ export default function AdminAssessment() {
             </div>
           </div>
 
-          {/* Tax module — same as Output3 */}
           <div className="bg-white rounded-xl shadow-sm p-4 mb-6">
             <h2 className="text-sm font-semibold text-gray-700 mb-3">ผลตอบแทนก่อน vs หลังภาษี (ประมาณการ ฐาน 1 ล้านบาท)</h2>
             <div className="grid grid-cols-2 gap-3 mb-3">
@@ -402,8 +360,7 @@ export default function AdminAssessment() {
             </div>
             <p className="text-xs text-orange-500 mt-2">{taxResult.disclaimer}</p>
           </div>
-
-        </div>{/* end admin-assessment-content */}
+        </div>
 
         <Disclaimer />
       </div>
