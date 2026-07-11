@@ -1,5 +1,7 @@
 import React, { useMemo, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
+import { exportToPDF } from '../utils/exportPDF'
+import { exportMetricsCSV } from '../utils/exportCSV'
 import {
   LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer, ReferenceDot, Label
 } from 'recharts'
@@ -103,9 +105,11 @@ export default function Output3() {
           <p className="text-sm text-gray-500">Output 3 — พอร์ตเฉพาะบุคคล + กราฟ efficient frontier</p>
         </div>
 
-        {/* Asset list */}
+        <div id="output3-content">
+        {/* Actual portfolio (after y* adjustment) */}
         <div className="bg-white rounded-xl shadow-sm p-4 mb-6">
-          <h2 className="text-sm font-semibold text-gray-700 mb-3">สินทรัพย์แนะนำ (Tangency Portfolio)</h2>
+          <h2 className="font-semibold text-gray-800 mb-0.5">พอร์ตจริงของคุณ (ปรับตามความกลัวเสี่ยง A แล้ว)</h2>
+          <p className="text-xs text-gray-400 mb-3">สัดส่วนที่แนะนำให้ลงจริง หลังปรับความเสี่ยงให้เหมาะกับตัวคุณ</p>
           <div className="space-y-3">
             {assetNames.map((asset, i) => {
               const w = optimal.finalWeights[i] || 0
@@ -133,6 +137,30 @@ export default function Output3() {
           {optimal.leverageFlag && (
             <p className="text-xs text-orange-500 mt-2">⚠️ Leverage clamped — ลงทุนได้สูงสุด 100% ของเงินต้น</p>
           )}
+        </div>
+
+        {/* Pure tangency portfolio (same for everyone) */}
+        <div className="bg-white rounded-xl shadow-sm p-4 mb-6">
+          <h2 className="font-semibold text-gray-800 mb-0.5">ส่วนผสมสินทรัพย์เสี่ยงที่ดีที่สุด (เหมือนกันทุกคน)</h2>
+          <p className="text-xs text-gray-400 mb-3">สูตรพอร์ตเสี่ยงที่คุ้มที่สุดตามทฤษฎี ยังไม่ปรับตามนิสัยความเสี่ยงของคุณ — พอร์ตจริงด้านบนคือตัวนี้ที่หรี่ความเสี่ยงลงแล้ว</p>
+          <div className="space-y-3">
+            {assetNames.map((asset, i) => {
+              const w = tangency.weights[i] || 0
+              const tickers = TICKER_SUGGESTIONS[asset] || []
+              return (
+                <div key={asset} className="border border-gray-100 rounded-lg p-3">
+                  <div className="flex justify-between items-center mb-1">
+                    <span className="font-medium text-sm text-gray-800">{ASSET_LABELS[asset]}</span>
+                    <span className="text-green-700 font-bold text-sm">{(w * 100).toFixed(1)}%</span>
+                  </div>
+                  <div className="h-1.5 bg-gray-100 rounded-full mb-2">
+                    <div className="h-1.5 bg-green-400 rounded-full" style={{ width: `${w * 100}%` }} />
+                  </div>
+                  <p className="text-xs text-gray-400">ตัวอย่าง: {tickers.join(', ')}</p>
+                </div>
+              )
+            })}
+          </div>
         </div>
 
         {/* Interactive efficient frontier chart */}
@@ -230,11 +258,31 @@ export default function Output3() {
           <p className="text-xs text-orange-500 mt-2">{taxResult.disclaimer}</p>
         </div>
 
+        </div>{/* end output3-content */}
+        <div className="flex gap-3 mb-3">
+          <button
+            onClick={() => exportMetricsCSV(
+              state.metrics!, state.riskResult!, state.riskCards,
+              state.allocation, state.answers?.fullName
+            )}
+            className="flex-1 py-3 border border-gray-300 text-gray-600 rounded-xl text-sm hover:bg-gray-50"
+          >
+            ⬇ ดาวน์โหลด CSV
+          </button>
+          <button
+            onClick={async () => {
+              await exportToPDF('output3-content', `portfolio-${state.answers?.fullName || 'plan'}.pdf`)
+            }}
+            className="flex-1 py-3 border border-indigo-600 text-indigo-600 rounded-xl text-sm hover:bg-indigo-50"
+          >
+            ⬇ ดาวน์โหลด PDF
+          </button>
+        </div>
         <button
-          onClick={() => alert('ฟีเจอร์ export จะพัฒนาในเวอร์ชันถัดไป')}
-          className="w-full py-3 border border-indigo-600 text-indigo-600 rounded-xl font-medium hover:bg-indigo-50 text-sm mb-3"
+          onClick={() => navigate('/history')}
+          className="w-full py-2 border border-gray-200 text-gray-400 rounded-xl text-sm hover:bg-gray-50 mb-3"
         >
-          บันทึก / Export แผน
+          ดูประวัติการประเมินทั้งหมด
         </button>
 
         <Disclaimer />

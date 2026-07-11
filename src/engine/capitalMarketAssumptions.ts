@@ -7,10 +7,13 @@ export type AssetName = typeof ASSET_NAMES[number]
 
 export const CMA = {
   assets: {
-    thaiStocks:    { expectedReturn: 0.08, volatility: 0.20, label: 'หุ้นไทย' },
-    foreignStocks: { expectedReturn: 0.09, volatility: 0.18, label: 'หุ้นต่างประเทศ' },
-    bonds:         { expectedReturn: 0.03, volatility: 0.05, label: 'ตราสารหนี้' },
-    gold:          { expectedReturn: 0.05, volatility: 0.15, label: 'ทองคำ' },
+    // Sharpe per asset (vs Rf=2%): Thai≈0.23, Foreign≈0.30, Bonds≈0.10, Gold≈0.13
+    // Tangency portfolio Sharpe ≈ 0.38–0.45 after diversification
+    // y*(A=4) ≈ 0.75 → ~25% cash; y*(A=8) ≈ 0.38 → ~62% cash
+    thaiStocks:    { expectedReturn: 0.07, volatility: 0.22, label: 'หุ้นไทย' },
+    foreignStocks: { expectedReturn: 0.08, volatility: 0.20, label: 'หุ้นต่างประเทศ' },
+    bonds:         { expectedReturn: 0.025, volatility: 0.05, label: 'ตราสารหนี้' },
+    gold:          { expectedReturn: 0.04, volatility: 0.16, label: 'ทองคำ' },
   },
   riskFreeRate: 0.02,
   cashLabel: 'เงินสด/พันธบัตรรัฐ',

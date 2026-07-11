@@ -275,10 +275,11 @@ export default function AdminAssessment() {
             </div>
           )}
 
-          {/* Asset allocation pie */}
+          {/* Asset allocation pie — actual portfolio after A adjustment */}
           {alloc && (
             <div className="bg-white rounded-xl shadow-sm p-4 mb-6">
-              <h2 className="text-sm font-semibold text-gray-700 mb-3">สัดส่วนสินทรัพย์ที่แนะนำ</h2>
+              <h2 className="font-semibold text-gray-800 mb-0.5">พอร์ตจริงของลูกค้า (ปรับตามความกลัวเสี่ยง A แล้ว)</h2>
+              <p className="text-xs text-gray-400 mb-3">สัดส่วนที่แนะนำให้ลงจริง หลังปรับความเสี่ยงให้เหมาะกับตัวลูกค้า</p>
               <ResponsiveContainer width="100%" height={220}>
                 <PieChart>
                   <Pie data={pieData} cx="50%" cy="50%" innerRadius={50} outerRadius={80} dataKey="value"
@@ -301,36 +302,28 @@ export default function AdminAssessment() {
             </div>
           )}
 
-          {/* Tangency asset list */}
+          {/* Pure tangency portfolio — same for everyone */}
           <div className="bg-white rounded-xl shadow-sm p-4 mb-6">
-            <h2 className="text-sm font-semibold text-gray-700 mb-3">สินทรัพย์แนะนำ (Tangency Portfolio)</h2>
+            <h2 className="font-semibold text-gray-800 mb-0.5">ส่วนผสมสินทรัพย์เสี่ยงที่ดีที่สุด (เหมือนกันทุกคน)</h2>
+            <p className="text-xs text-gray-400 mb-3">สูตรพอร์ตเสี่ยงที่คุ้มที่สุดตามทฤษฎี ยังไม่ปรับตามนิสัยความเสี่ยงของลูกค้า — พอร์ตจริงด้านบนคือตัวนี้ที่หรี่ความเสี่ยงลงแล้ว</p>
             <div className="space-y-3">
               {FRONTIER_ASSETS.map((asset, i) => {
-                const w = optimal.finalWeights[i] || 0
+                const w = TANGENCY.weights[i] || 0
                 const tickers = TICKER_SUGGESTIONS[asset] || []
                 return (
                   <div key={asset} className="border border-gray-100 rounded-lg p-3">
                     <div className="flex justify-between items-center mb-1">
                       <span className="font-medium text-sm text-gray-800">{ASSET_LABELS[asset]}</span>
-                      <span className="text-indigo-700 font-bold text-sm">{(w * 100).toFixed(1)}%</span>
+                      <span className="text-green-700 font-bold text-sm">{(w * 100).toFixed(1)}%</span>
                     </div>
                     <div className="h-1.5 bg-gray-100 rounded-full mb-2">
-                      <div className="h-1.5 bg-indigo-500 rounded-full" style={{ width: `${w * 100}%` }} />
+                      <div className="h-1.5 bg-green-400 rounded-full" style={{ width: `${w * 100}%` }} />
                     </div>
                     <p className="text-xs text-gray-400">ตัวอย่าง: {tickers.join(', ')}</p>
                   </div>
                 )
               })}
-              <div className="border border-gray-100 rounded-lg p-3">
-                <div className="flex justify-between items-center">
-                  <span className="font-medium text-sm text-gray-800">เงินสด/พันธบัตรรัฐ</span>
-                  <span className="text-gray-600 font-bold text-sm">{(optimal.ySafe * 100).toFixed(1)}%</span>
-                </div>
-              </div>
             </div>
-            {optimal.leverageFlag && (
-              <p className="text-xs text-orange-500 mt-2">⚠️ Leverage clamped — ลงทุนได้สูงสุด 100% ของเงินต้น</p>
-            )}
           </div>
 
           {/* Efficient frontier */}
