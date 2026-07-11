@@ -3,6 +3,7 @@ import type { Answers, MetricsResult, RiskCoefficientResult, RiskCard, Allocatio
 export interface CustomerRecord {
   id?: string
   createdAt?: string
+  userId?: string
   // ข้อมูลส่วนตัว (เปิดเผย)
   fullName: string
   age: number

@@ -7,6 +7,8 @@ import Output1 from './pages/Output1'
 import Output2 from './pages/Output2'
 import Output3 from './pages/Output3'
 import Admin from './pages/Admin'
+import AdminUser from './pages/AdminUser'
+import AdminAssessment from './pages/AdminAssessment'
 import Login from './pages/Login'
 import Consent from './pages/Consent'
 import History from './pages/History'
@@ -24,8 +26,10 @@ export default function App() {
             <Route path="/output2" element={<Output2 />} />
             <Route path="/output3" element={<Output3 />} />
             <Route path="/history" element={<History />} />
-            <Route path="/admin"   element={<Admin />} />
-            <Route path="*"        element={<Navigate to="/" />} />
+            <Route path="/admin"                          element={<Admin />} />
+            <Route path="/admin/:userId"                element={<AdminUser />} />
+            <Route path="/admin/:userId/:assessmentId"  element={<AdminAssessment />} />
+            <Route path="*"                             element={<Navigate to="/" />} />
           </Routes>
         </BrowserRouter>
       </AppProvider>

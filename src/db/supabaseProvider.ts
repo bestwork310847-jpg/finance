@@ -1,4 +1,4 @@
-import { supabase } from '../auth/AuthContext'
+import { supabase } from '../lib/supabase'
 import type { DbProvider, CustomerRecord } from './dbTypes'
 
 export const supabaseProvider: DbProvider = {
@@ -61,6 +61,7 @@ function mapRow(row: Record<string, unknown>): CustomerRecord {
   return {
     id:         row.id as string,
     createdAt:  row.created_at as string,
+    userId:     row.user_id as string,
     fullName:   row.full_name as string,
     age:        row.age as number,
     occupation: row.occupation as string,
