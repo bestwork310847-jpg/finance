@@ -1,6 +1,8 @@
-import React, { useState } from 'react'
+import React, { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useApp } from '../store/appStore'
+import { useAuth } from '../auth/AuthContext'
+import { supabase } from '../lib/supabase'
 import { computeMetrics } from '../engine/metrics'
 import { computeRiskCoefficient } from '../engine/riskCoefficient'
 import { assessAllRisks } from '../engine/riskCards'
@@ -117,7 +119,16 @@ export default function Questionnaire() {
   const [step, setStep] = useState(1)
   const [data, setData] = useState<Partial<Answers>>(emptyAnswers())
   const { dispatch } = useApp()
+  const { user, loading } = useAuth()
   const navigate = useNavigate()
+
+  useEffect(() => {
+    if (loading) return
+    if (supabase && !user) { navigate('/login'); return }
+    if (supabase && user && localStorage.getItem('pdpa_consent_given') !== 'true') {
+      navigate('/consent')
+    }
+  }, [loading, user])
 
   function set<K extends keyof Answers>(key: K, value: Answers[K]) {
     setData(prev => ({ ...prev, [key]: value }))
@@ -138,7 +149,6 @@ export default function Questionnaire() {
     dispatch({ type: 'SET_METRICS', payload: metrics })
     dispatch({ type: 'SET_RISK_RESULT', payload: riskResult })
     dispatch({ type: 'SET_RISK_CARDS', payload: riskCards })
-    // บันทึกข้อมูลลูกค้า (ไม่ block navigation ถ้า save ล้มเหลว)
     db.saveCustomer({
       fullName: answers.fullName,
       age: answers.age,
@@ -154,6 +164,10 @@ export default function Questionnaire() {
       allocation: null,
     }).catch(console.error)
     navigate('/output1')
+  }
+
+  if (supabase && loading) {
+    return <div className="min-h-screen flex items-center justify-center text-gray-400">กำลังโหลด...</div>
   }
 
   const stepTitles = [
