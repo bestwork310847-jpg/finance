@@ -69,6 +69,6 @@ create policy "users can delete own assessments"
 grant usage on schema public to anon, authenticated;
 grant select, insert, delete on table public.assessments to authenticated;
 
--- 6. ตาราง customers เก่า (เก็บไว้ถ้ามีอยู่แล้ว)
+-- 5. ตาราง customers เก่า (เก็บไว้ถ้ามีอยู่แล้ว)
 -- ถ้าเพิ่งสร้าง project ใหม่ไม่ต้องสนใจส่วนนี้
 -- drop table if exists customers;
