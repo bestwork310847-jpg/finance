@@ -31,21 +31,13 @@ const TICKER_SUGGESTIONS: Record<string, string[]> = {
   gold: GOLD_TICKERS,
 }
 const FRONTIER_ASSETS = ['thaiStocks', 'foreignStocks', 'bonds', 'gold'] as const
-function buildFrontierData() {
-  const returns = FRONTIER_ASSETS.map(k => CMA.assets[k].expectedReturn)
-  const n = FRONTIER_ASSETS.length
-  const cov = Array.from({ length: n }, (_, i) =>
-    Array.from({ length: n }, (_, j) =>
-      CMA.correlations[i][j] * CMA.assets[FRONTIER_ASSETS[i]].volatility * CMA.assets[FRONTIER_ASSETS[j]].volatility
-    )
-  )
-  return { returns, cov }
-}
+
 const riskLevelLabel: Record<string, { label: string; color: string; desc: string }> = {
   conservative: { label: 'Conservative — รักษาความมั่นคง', color: 'bg-blue-100 text-blue-800 border-blue-300', desc: 'เหมาะกับการลงทุนที่เน้นความมั่นคงของเงินต้น ยอมรับผลตอบแทนน้อยแลกกับความเสี่ยงต่ำ' },
   moderate:      { label: 'Moderate — สมดุล', color: 'bg-yellow-100 text-yellow-800 border-yellow-300', desc: 'รับความเสี่ยงได้ปานกลาง มุ่งสร้างผลตอบแทนสม่ำเสมอในระยะกลาง' },
   aggressive:    { label: 'Aggressive — เน้นเติบโต', color: 'bg-red-100 text-red-800 border-red-300', desc: 'รับความเสี่ยงสูงได้ มุ่งเน้นผลตอบแทนสูงในระยะยาว' },
 }
+
 function fmtBaht(n: number) {
   if (Math.abs(n) >= 1_000_000) return (n / 1_000_000).toFixed(1) + ' ล้านบาท'
   return n.toLocaleString('th-TH') + ' บาท'
@@ -56,10 +48,31 @@ function fmtDate(iso: string) {
   return new Date(iso).toLocaleDateString('th-TH', { year: 'numeric', month: 'long', day: 'numeric', hour: '2-digit', minute: '2-digit' })
 }
 
+// Pre-compute stable frontier data at module level (no side effects)
+const _frontierReturns = FRONTIER_ASSETS.map(k => CMA.assets[k].expectedReturn)
+const _n = FRONTIER_ASSETS.length
+const _cov = Array.from({ length: _n }, (_, i) =>
+  Array.from({ length: _n }, (_, j) =>
+    CMA.correlations[i][j] * CMA.assets[FRONTIER_ASSETS[i]].volatility * CMA.assets[FRONTIER_ASSETS[j]].volatility
+  )
+)
+const Rf = CMA.riskFreeRate
+const FRONTIER_POINTS = efficientFrontier(_frontierReturns, _cov, 40)
+const TANGENCY = tangencyPortfolio(_frontierReturns, _cov, Rf)
+const CAL_POINTS = (() => {
+  const pts = []
+  for (let y = 0; y <= 1.2; y += 0.05) {
+    pts.push({ sigma: TANGENCY.sigma * y * 100, mu: (Rf + (TANGENCY.E - Rf) * y) * 100 })
+  }
+  return pts
+})()
+
 export default function AdminAssessment() {
   const { userId, assessmentId } = useParams<{ userId: string; assessmentId: string }>()
   const { user, loading } = useAuth()
   const navigate = useNavigate()
+
+  // ── All hooks unconditionally before any early return ──
   const [record, setRecord] = useState<CustomerRecord | null>(null)
   const [fetching, setFetching] = useState(true)
   const [error, setError] = useState<string | null>(null)
@@ -86,7 +99,49 @@ export default function AdminAssessment() {
       })
   }, [loading, isAdmin, assessmentId])
 
-  if (loading || fetching) return <div className="min-h-screen flex items-center justify-center text-gray-400">กำลังโหลด...</div>
+  const optimal = useMemo(() => optimalForPerson(TANGENCY, Rf, sliderA), [sliderA])
+
+  const indiffCurve = useMemo(() => {
+    const U = optimal.E - 0.5 * sliderA * optimal.sigma * optimal.sigma
+    const pts = []
+    for (let s = 0.01; s <= 0.30; s += 0.005) {
+      const mu = U + 0.5 * sliderA * s * s
+      if (mu > 0 && mu < 0.25) pts.push({ sigma: s * 100, mu: mu * 100 })
+    }
+    return pts
+  }, [optimal, sliderA])
+
+  const taxResult = useMemo(() => {
+    const answers = record?.answers
+    const taxInput = {
+      thaiStocksDividend:    (optimal.finalWeights[0] || 0) * 1_000_000 * 0.025,
+      foreignStocksDividend: (optimal.finalWeights[1] || 0) * 1_000_000 * 0.015,
+      foreignStocksGain:     (optimal.finalWeights[1] || 0) * 1_000_000 * (CMA.assets.foreignStocks.expectedReturn - 0.015),
+      bondInterest:          (optimal.finalWeights[2] || 0) * 1_000_000 * CMA.assets.bonds.expectedReturn,
+      ssfAmount: answers?.investsSSF === 'ลงทุน' ? 50000 : 0,
+      rmfAmount: answers?.investsRMF === 'ลงทุน' ? 50000 : 0,
+    }
+    const taxPerson = {
+      annualIncome: answers?.annualSalary || 600000,
+      daysInThailand: 200,
+      remitForeignGains: false,
+      existingDeductions: 0,
+    }
+    return afterTaxReturn(taxInput, taxPerson)
+  }, [sliderA, record?.answers])
+
+  const pieData = useMemo(() => {
+    const alloc = record?.allocation ?? (record?.riskResult ? broadAllocation(record.riskResult.A) : null)
+    if (!alloc) return []
+    return Object.entries(alloc.weights)
+      .filter(([, v]) => v > 0.001)
+      .map(([k, v]) => ({ name: ASSET_LABELS[k] || k, value: parseFloat((v * 100).toFixed(1)) }))
+  }, [record])
+
+  // ── Early returns AFTER all hooks ──
+  if (loading || fetching) {
+    return <div className="min-h-screen flex items-center justify-center text-gray-400">กำลังโหลด...</div>
+  }
 
   if (!isAdmin) {
     return (
@@ -112,57 +167,8 @@ export default function AdminAssessment() {
   }
 
   const { metrics, riskResult, riskCards } = record
-  const alloc = record.allocation || (riskResult ? broadAllocation(riskResult.A) : null)
+  const alloc = record.allocation ?? (riskResult ? broadAllocation(riskResult.A) : null)
   const rl = riskLevelLabel[riskResult?.riskLevel ?? 'moderate']
-
-  const pieData = alloc
-    ? Object.entries(alloc.weights)
-        .filter(([, v]) => v > 0.001)
-        .map(([k, v]) => ({ name: ASSET_LABELS[k] || k, value: parseFloat((v * 100).toFixed(1)) }))
-    : []
-
-  const { returns, cov } = useMemo(() => buildFrontierData(), [])
-  const Rf = CMA.riskFreeRate
-  const frontier = useMemo(() => efficientFrontier(returns, cov, 40), [])
-  const tangency = useMemo(() => tangencyPortfolio(returns, cov, Rf), [])
-  const optimal = useMemo(() => optimalForPerson(tangency, Rf, sliderA), [sliderA, tangency])
-
-  const calPoints = useMemo(() => {
-    const pts = []
-    for (let y = 0; y <= 1.2; y += 0.05) {
-      pts.push({ sigma: tangency.sigma * y * 100, mu: (Rf + (tangency.E - Rf) * y) * 100 })
-    }
-    return pts
-  }, [tangency])
-
-  const U = optimal.E - 0.5 * sliderA * optimal.sigma * optimal.sigma
-  const indiffCurve = useMemo(() => {
-    const pts = []
-    for (let s = 0.01; s <= 0.30; s += 0.005) {
-      const mu = U + 0.5 * sliderA * s * s
-      if (mu > 0 && mu < 0.25) pts.push({ sigma: s * 100, mu: mu * 100 })
-    }
-    return pts
-  }, [U, sliderA])
-
-  const taxResult = useMemo(() => {
-    const answers = record.answers
-    const taxInput = {
-      thaiStocksDividend: (optimal.finalWeights[0] || 0) * 1_000_000 * 0.025,
-      foreignStocksDividend: (optimal.finalWeights[1] || 0) * 1_000_000 * 0.015,
-      foreignStocksGain: (optimal.finalWeights[1] || 0) * 1_000_000 * (CMA.assets.foreignStocks.expectedReturn - 0.015),
-      bondInterest: (optimal.finalWeights[2] || 0) * 1_000_000 * CMA.assets.bonds.expectedReturn,
-      ssfAmount: answers?.investsSSF === 'ลงทุน' ? 50000 : 0,
-      rmfAmount: answers?.investsRMF === 'ลงทุน' ? 50000 : 0,
-    }
-    const taxPerson = {
-      annualIncome: answers?.annualSalary || 600000,
-      daysInThailand: 200,
-      remitForeignGains: false,
-      existingDeductions: 0,
-    }
-    return afterTaxReturn(taxInput, taxPerson)
-  }, [sliderA, record.answers])
 
   async function handleExportPDF() {
     setExporting(true)
@@ -173,6 +179,7 @@ export default function AdminAssessment() {
   return (
     <div className="min-h-screen bg-gray-50">
       <div className="max-w-2xl mx-auto px-4 py-8">
+        {/* Header */}
         <div className="mb-6">
           <button onClick={() => navigate(`/admin/${userId}`)} className="text-indigo-600 text-sm mb-2">← กลับแฟ้มลูกค้า</button>
           <div className="flex items-start justify-between">
@@ -203,17 +210,39 @@ export default function AdminAssessment() {
         </div>
 
         <div id="admin-assessment-content">
+
+          {/* Metric cards */}
           {metrics && (
             <div className="grid grid-cols-2 gap-3 mb-8">
               <MetricCard label="ทรัพย์สินสุทธิ" value={fmtBaht(metrics.netWorth)} color={metrics.netWorth >= 0 ? 'green' : 'red'} />
-              <MetricCard label="เงินสำรองฉุกเฉิน" value={metrics.emergencyMonths !== null ? fmtMonths(metrics.emergencyMonths) : 'ไม่มีข้อมูล'} sub="เป้าหมาย 6 เดือน" color={metrics.emergencyMonths === null ? 'default' : metrics.emergencyMonths >= 6 ? 'green' : metrics.emergencyMonths >= 3 ? 'yellow' : 'red'} />
-              <MetricCard label="อัตราภาระหนี้ (DTI)" value={metrics.dti !== null ? fmtPct(metrics.dti) : 'ไม่มีข้อมูล'} sub="เกิน 40% = อันตราย" color={metrics.dti === null ? 'default' : metrics.dti <= 0.3 ? 'green' : metrics.dti <= 0.4 ? 'yellow' : 'red'} />
-              <MetricCard label="อัตราการออม" value={metrics.savingsRate !== null ? fmtPct(metrics.savingsRate) : 'ไม่มีข้อมูล'} sub="เป้าหมาย 20%+" color={metrics.savingsRate === null ? 'default' : metrics.savingsRate >= 0.2 ? 'green' : metrics.savingsRate >= 0.1 ? 'yellow' : 'red'} />
+              <MetricCard
+                label="เงินสำรองฉุกเฉิน"
+                value={metrics.emergencyMonths !== null ? fmtMonths(metrics.emergencyMonths) : 'ไม่มีข้อมูล'}
+                sub="เป้าหมาย 6 เดือน"
+                color={metrics.emergencyMonths === null ? 'default' : metrics.emergencyMonths >= 6 ? 'green' : metrics.emergencyMonths >= 3 ? 'yellow' : 'red'}
+              />
+              <MetricCard
+                label="อัตราภาระหนี้ (DTI)"
+                value={metrics.dti !== null ? fmtPct(metrics.dti) : 'ไม่มีข้อมูล'}
+                sub="เกิน 40% = อันตราย"
+                color={metrics.dti === null ? 'default' : metrics.dti <= 0.3 ? 'green' : metrics.dti <= 0.4 ? 'yellow' : 'red'}
+              />
+              <MetricCard
+                label="อัตราการออม"
+                value={metrics.savingsRate !== null ? fmtPct(metrics.savingsRate) : 'ไม่มีข้อมูล'}
+                sub="เป้าหมาย 20%+"
+                color={metrics.savingsRate === null ? 'default' : metrics.savingsRate >= 0.2 ? 'green' : metrics.savingsRate >= 0.1 ? 'yellow' : 'red'}
+              />
               <MetricCard label="รายได้รวม/เดือน" value={fmtBaht(metrics.totalMonthlyIncome)} />
-              <MetricCard label="คะแนนความรู้การลงทุน" value={`${(metrics.knowledgeScore * 6).toFixed(0)}/6 ข้อ`} color={metrics.knowledgeScore >= 0.67 ? 'green' : metrics.knowledgeScore >= 0.33 ? 'yellow' : 'red'} />
+              <MetricCard
+                label="คะแนนความรู้การลงทุน"
+                value={`${(metrics.knowledgeScore * 6).toFixed(0)}/6 ข้อ`}
+                color={metrics.knowledgeScore >= 0.67 ? 'green' : metrics.knowledgeScore >= 0.33 ? 'yellow' : 'red'}
+              />
             </div>
           )}
 
+          {/* Risk cards */}
           {riskCards?.length > 0 && (
             <>
               <h2 className="text-lg font-semibold text-gray-800 mb-3">การ์ดความเสี่ยง</h2>
@@ -223,6 +252,7 @@ export default function AdminAssessment() {
             </>
           )}
 
+          {/* Overall risk level */}
           {riskResult && (
             <div className={`border rounded-xl p-5 mb-6 ${rl.color}`}>
               <div className="flex items-center justify-between mb-2">
@@ -245,6 +275,7 @@ export default function AdminAssessment() {
             </div>
           )}
 
+          {/* Asset allocation pie */}
           {alloc && (
             <div className="bg-white rounded-xl shadow-sm p-4 mb-6">
               <h2 className="text-sm font-semibold text-gray-700 mb-3">สัดส่วนสินทรัพย์ที่แนะนำ</h2>
@@ -270,6 +301,7 @@ export default function AdminAssessment() {
             </div>
           )}
 
+          {/* Tangency asset list */}
           <div className="bg-white rounded-xl shadow-sm p-4 mb-6">
             <h2 className="text-sm font-semibold text-gray-700 mb-3">สินทรัพย์แนะนำ (Tangency Portfolio)</h2>
             <div className="space-y-3">
@@ -301,12 +333,18 @@ export default function AdminAssessment() {
             )}
           </div>
 
+          {/* Efficient frontier */}
           <div className="bg-white rounded-xl shadow-sm p-4 mb-6">
             <h2 className="text-sm font-semibold text-gray-700 mb-2">Efficient Frontier & จุดที่เหมาะกับลูกค้า</h2>
             <p className="text-xs text-gray-400 mb-3">จุดสีเขียว = Tangency | จุดสีส้ม = จุดของลูกค้า (ขึ้นกับ A)</p>
             <div className="flex items-center gap-3 mb-3">
               <span className="text-xs text-gray-500">A = {sliderA.toFixed(1)}</span>
-              <input type="range" min={2} max={8} step={0.1} value={sliderA} onChange={e => setSliderA(parseFloat(e.target.value))} className="flex-1 accent-indigo-600" />
+              <input
+                type="range" min={2} max={8} step={0.1}
+                value={sliderA}
+                onChange={e => setSliderA(parseFloat(e.target.value))}
+                className="flex-1 accent-indigo-600"
+              />
               <span className="text-xs text-gray-400">เสี่ยงน้อย ↔ เสี่ยงมาก</span>
             </div>
             <ResponsiveContainer width="100%" height={300}>
@@ -314,10 +352,11 @@ export default function AdminAssessment() {
                 <XAxis dataKey="sigma" type="number" domain={[0, 25]} label={{ value: 'ความเสี่ยง σ (%)', position: 'insideBottom', offset: -10 }} tick={{ fontSize: 11 }} />
                 <YAxis dataKey="mu" type="number" domain={[0, 15]} label={{ value: 'ผลตอบแทน (%)', angle: -90, position: 'insideLeft', offset: 10 }} tick={{ fontSize: 11 }} />
                 <Tooltip formatter={(v: number) => `${v.toFixed(2)}%`} />
-                <Line data={frontier.map(p => ({ sigma: p.sigma * 100, mu: p.mu * 100 }))} type="monotone" dataKey="mu" dot={false} stroke="#9ca3af" strokeWidth={2} name="Efficient Frontier" />
-                <Line data={calPoints} type="linear" dataKey="mu" dot={false} stroke="#6366f1" strokeWidth={2} strokeDasharray="5 5" name="CAL" />
+                <Line data={FRONTIER_POINTS.map(p => ({ sigma: p.sigma * 100, mu: p.mu * 100 }))}
+                  type="monotone" dataKey="mu" dot={false} stroke="#9ca3af" strokeWidth={2} name="Efficient Frontier" />
+                <Line data={CAL_POINTS} type="linear" dataKey="mu" dot={false} stroke="#6366f1" strokeWidth={2} strokeDasharray="5 5" name="CAL" />
                 <Line data={indiffCurve} type="monotone" dataKey="mu" dot={false} stroke="#f59e0b" strokeWidth={1} strokeDasharray="3 3" name="Indifference" />
-                <ReferenceDot x={tangency.sigma * 100} y={tangency.E * 100} r={6} fill="#22c55e" stroke="#16a34a" strokeWidth={2}>
+                <ReferenceDot x={TANGENCY.sigma * 100} y={TANGENCY.E * 100} r={6} fill="#22c55e" stroke="#16a34a" strokeWidth={2}>
                   <Label value="T" position="top" fontSize={11} fill="#16a34a" />
                 </ReferenceDot>
                 <ReferenceDot x={optimal.sigma * 100} y={optimal.E * 100} r={8} fill="#f97316" stroke="#ea580c" strokeWidth={2}>
@@ -340,6 +379,7 @@ export default function AdminAssessment() {
             </div>
           </div>
 
+          {/* Tax module */}
           <div className="bg-white rounded-xl shadow-sm p-4 mb-6">
             <h2 className="text-sm font-semibold text-gray-700 mb-3">ผลตอบแทนก่อน vs หลังภาษี (ประมาณการ ฐาน 1 ล้านบาท)</h2>
             <div className="grid grid-cols-2 gap-3 mb-3">
@@ -360,7 +400,8 @@ export default function AdminAssessment() {
             </div>
             <p className="text-xs text-orange-500 mt-2">{taxResult.disclaimer}</p>
           </div>
-        </div>
+
+        </div>{/* end admin-assessment-content */}
 
         <Disclaimer />
       </div>
