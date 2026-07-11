@@ -275,7 +275,7 @@ export default function AdminAssessment() {
             </div>
           )}
 
-          {/* Asset allocation pie — same as Output2 */}
+          {/* Asset allocation — same as Output2 */}
           {alloc && (
             <div className="bg-white rounded-xl shadow-sm p-4 mb-6">
               <h2 className="text-sm font-semibold text-gray-700 mb-3">สัดส่วนสินทรัพย์ที่แนะนำ</h2>
