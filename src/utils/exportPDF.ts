@@ -16,7 +16,9 @@ export async function exportToPDF(elementId: string, filename = 'financial-asses
     scrollY: -window.scrollY,
   })
 
+  const imgData = canvas.toDataURL('image/png')
   const pdf = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' })
+
   const pageW = pdf.internal.pageSize.getWidth()
   const pageH = pdf.internal.pageSize.getHeight()
   const margin = 10
@@ -49,9 +51,13 @@ export async function exportToPDF(elementId: string, filename = 'financial-asses
   pdf.setFontSize(7)
   pdf.setTextColor(150, 150, 150)
   pdf.text(DISCLAIMER, margin, pageH - 6, { maxWidth: contentW })
+
   pdf.setFontSize(7)
   pdf.setTextColor(180, 180, 180)
-  pdf.text(`สร้างเมื่อ: ${new Date().toLocaleDateString('th-TH', { dateStyle: 'full' })}`, margin, pageH - 3)
+  pdf.text(
+    `สร้างเมื่อ: ${new Date().toLocaleDateString('th-TH', { dateStyle: 'full' })}`,
+    margin, pageH - 3
+  )
 
   pdf.save(filename)
 }

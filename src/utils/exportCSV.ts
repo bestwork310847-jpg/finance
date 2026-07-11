@@ -28,6 +28,7 @@ export function exportMetricsCSV(
   lines.push(row('วันที่ประเมิน', now))
   lines.push(row('Disclaimer', DISCLAIMER))
   lines.push('')
+
   lines.push(row('=== ตัวชี้วัดทางการเงิน ==='))
   lines.push(row('ตัวชี้วัด', 'ค่า', 'หน่วย'))
   lines.push(row('ทรัพย์สินสุทธิ (Net Worth)', metrics.netWorth, 'บาท'))
@@ -40,6 +41,7 @@ export function exportMetricsCSV(
   lines.push(row('ปีเหลือก่อนเกษียณ', metrics.yearsToRetirement, 'ปี'))
   lines.push(row('คะแนนความรู้การลงทุน', (metrics.knowledgeScore * 6).toFixed(0) + '/6', 'ข้อ'))
   lines.push('')
+
   lines.push(row('=== ผลการประเมินความเสี่ยง ==='))
   lines.push(row('Capacity Score', riskResult.capacityScore.toFixed(1), '/100'))
   lines.push(row('Tolerance Score', riskResult.toleranceScore.toFixed(1), '/100'))
@@ -47,10 +49,12 @@ export function exportMetricsCSV(
   lines.push(row('ระดับความเสี่ยง', riskResult.riskLevel))
   lines.push(row('ค่า A (Risk Aversion)', riskResult.A.toFixed(2)))
   lines.push('')
+
   lines.push(row('=== การ์ดความเสี่ยง ==='))
   lines.push(row('ด้าน', 'ระดับ', 'สรุป', 'คำแนะนำ'))
   riskCards.forEach(c => lines.push(row(c.name, c.level, c.punchline, c.advice)))
   lines.push('')
+
   if (allocation) {
     lines.push(row('=== สัดส่วนพอร์ตที่แนะนำ ==='))
     lines.push(row('สินทรัพย์', 'สัดส่วน (%)'))
