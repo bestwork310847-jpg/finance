@@ -26,10 +26,10 @@ export default function App() {
             <Route path="/output2" element={<Output2 />} />
             <Route path="/output3" element={<Output3 />} />
             <Route path="/history" element={<History />} />
-            <Route path="/admin"                          element={<Admin />} />
-            <Route path="/admin/:userId"                element={<AdminUser />} />
-            <Route path="/admin/:userId/:assessmentId"  element={<AdminAssessment />} />
-            <Route path="*"                             element={<Navigate to="/" />} />
+            <Route path="/admin"                         element={<Admin />} />
+            <Route path="/admin/:userId"                 element={<AdminUser />} />
+            <Route path="/admin/:userId/:assessmentId"   element={<AdminAssessment />} />
+            <Route path="*"                              element={<Navigate to="/" />} />
           </Routes>
         </BrowserRouter>
       </AppProvider>
