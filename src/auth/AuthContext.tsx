@@ -1,6 +1,7 @@
 import React, { createContext, useContext, useEffect, useState } from 'react'
 import type { User, Session } from '@supabase/supabase-js'
 import { supabase } from '../lib/supabase'
+import { errorMessage, fromSupabaseError } from '../lib/errors'
 
 export { supabase }
 
@@ -36,24 +37,24 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }, [])
 
   async function signUp(email: string, password: string): Promise<string | null> {
-    if (!supabase) return 'ยังไม่ได้ตั้งค่า Supabase'
+    if (!supabase) return errorMessage('AUTH_NOT_CONFIGURED')
     const { error } = await supabase.auth.signUp({ email, password })
-    return error?.message ?? null
+    return fromSupabaseError(error)?.message ?? null
   }
 
   async function signIn(email: string, password: string): Promise<string | null> {
-    if (!supabase) return 'ยังไม่ได้ตั้งค่า Supabase'
+    if (!supabase) return errorMessage('AUTH_NOT_CONFIGURED')
     const { error } = await supabase.auth.signInWithPassword({ email, password })
-    return error?.message ?? null
+    return fromSupabaseError(error)?.message ?? null
   }
 
   async function signInWithGoogle(): Promise<string | null> {
-    if (!supabase) return 'ยังไม่ได้ตั้งค่า Supabase'
+    if (!supabase) return errorMessage('AUTH_NOT_CONFIGURED')
     const { error } = await supabase.auth.signInWithOAuth({
       provider: 'google',
       options: { redirectTo: window.location.origin + '/consent' },
     })
-    return error?.message ?? null
+    return fromSupabaseError(error)?.message ?? null
   }
 
   async function signOut() {

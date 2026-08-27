@@ -3,6 +3,7 @@ import { useNavigate, useParams } from 'react-router-dom'
 import { useAuth } from '../auth/AuthContext'
 import { supabase } from '../lib/supabase'
 import type { CustomerRecord } from '../db/dbTypes'
+import { errorMessage, fromSupabaseError } from '../lib/errors'
 import { MetricCard } from '../components/MetricCard'
 import { RiskCardComponent } from '../components/RiskCard'
 import { Disclaimer } from '../components/Disclaimer'
@@ -84,14 +85,14 @@ export default function AdminAssessment() {
   useEffect(() => {
     if (loading) return
     if (!isAdmin || !assessmentId) { setFetching(false); return }
-    if (!supabase) { setError('Supabase ไม่ได้ตั้งค่า'); setFetching(false); return }
+    if (!supabase) { setError(errorMessage('DB_NOT_CONFIGURED')); setFetching(false); return }
     supabase
       .from('assessments')
       .select('*')
       .eq('id', assessmentId)
       .single()
       .then(({ data, error: err }) => {
-        if (err || !data) { setError(err?.message ?? 'ไม่พบข้อมูล'); setFetching(false); return }
+        if (err || !data) { setError(err ? fromSupabaseError(err)!.message : errorMessage('NOT_FOUND')); setFetching(false); return }
         const r = mapRow(data as Record<string, unknown>)
         setRecord(r)
         if (r.riskA) setSliderA(Math.min(8, Math.max(2, r.riskA)))

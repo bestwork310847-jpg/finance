@@ -1,11 +1,12 @@
 import { supabase } from '../lib/supabase'
 import type { DbProvider, CustomerRecord } from './dbTypes'
+import { errorMessage, fromSupabaseError } from '../lib/errors'
 
 export const supabaseProvider: DbProvider = {
   async saveCustomer(record) {
-    if (!supabase) return { id: '', error: 'Supabase ไม่ได้ตั้งค่า' }
+    if (!supabase) return { id: '', error: errorMessage('DB_NOT_CONFIGURED') }
     const { data: { user } } = await supabase.auth.getUser()
-    if (!user) return { id: '', error: 'กรุณาล็อกอินก่อนบันทึก' }
+    if (!user) return { id: '', error: errorMessage('AUTH_REQUIRED') }
     const { data, error } = await supabase
       .from('assessments')
       .insert({
@@ -25,35 +26,35 @@ export const supabaseProvider: DbProvider = {
       })
       .select('id')
       .single()
-    if (error) return { id: '', error: error.message }
+    if (error) return { id: '', error: fromSupabaseError(error)!.message }
     return { id: data.id, error: null }
   },
 
   async getCustomers() {
-    if (!supabase) return { data: [], error: 'Supabase ไม่ได้ตั้งค่า' }
+    if (!supabase) return { data: [], error: errorMessage('DB_NOT_CONFIGURED') }
     const { data, error } = await supabase
       .from('assessments')
       .select('*')
       .order('created_at', { ascending: false })
-    if (error) return { data: [], error: error.message }
+    if (error) return { data: [], error: fromSupabaseError(error)!.message }
     return { data: (data || []).map(mapRow), error: null }
   },
 
   async getCustomer(id) {
-    if (!supabase) return { data: null, error: 'Supabase ไม่ได้ตั้งค่า' }
+    if (!supabase) return { data: null, error: errorMessage('DB_NOT_CONFIGURED') }
     const { data, error } = await supabase
       .from('assessments')
       .select('*')
       .eq('id', id)
       .single()
-    if (error) return { data: null, error: error.message }
+    if (error) return { data: null, error: fromSupabaseError(error)!.message }
     return { data: mapRow(data), error: null }
   },
 
   async deleteCustomer(id) {
-    if (!supabase) return { error: 'Supabase ไม่ได้ตั้งค่า' }
+    if (!supabase) return { error: errorMessage('DB_NOT_CONFIGURED') }
     const { error } = await supabase.from('assessments').delete().eq('id', id)
-    return { error: error?.message ?? null }
+    return { error: fromSupabaseError(error)?.message ?? null }
   },
 }
 

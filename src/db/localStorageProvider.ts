@@ -1,6 +1,7 @@
 // Fallback provider — เก็บใน browser localStorage
 // ใช้ตอนยังไม่ได้ตั้งค่า Supabase หรือทดสอบ offline
 import type { DbProvider, CustomerRecord } from './dbTypes'
+import { errorMessage } from '../lib/errors'
 
 const KEY = 'finance_customers'
 
@@ -36,7 +37,7 @@ export const localStorageProvider: DbProvider = {
 
   async getCustomer(id) {
     const found = load().find(r => r.id === id) ?? null
-    return { data: found, error: found ? null : 'ไม่พบข้อมูล' }
+    return { data: found, error: found ? null : errorMessage('NOT_FOUND') }
   },
 
   async deleteCustomer(id) {

@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom'
 import { useAuth } from '../auth/AuthContext'
 import { supabase } from '../lib/supabase'
 import type { CustomerRecord } from '../db/dbTypes'
+import { errorMessage, fromSupabaseError } from '../lib/errors'
 
 const ADMIN_UID = import.meta.env.VITE_ADMIN_USER_ID as string
 
@@ -80,13 +81,13 @@ export default function Admin() {
   useEffect(() => {
     if (loading) return
     if (!isAdmin) { setFetching(false); return }
-    if (!supabase) { setError('Supabase ไม่ได้ตั้งค่า'); setFetching(false); return }
+    if (!supabase) { setError(errorMessage('DB_NOT_CONFIGURED')); setFetching(false); return }
     supabase
       .from('assessments')
       .select('*')
       .order('created_at', { ascending: false })
       .then(({ data, error: err }) => {
-        if (err) { setError(err.message); setFetching(false); return }
+        if (err) { setError(fromSupabaseError(err)!.message); setFetching(false); return }
         setRecords((data || []).map(mapRow))
         setFetching(false)
       })
