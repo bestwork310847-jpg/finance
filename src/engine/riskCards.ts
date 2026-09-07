@@ -113,28 +113,33 @@ export function assessAllRisks(metrics: MetricsResult, a: Answers): RiskCard[] {
       : 'สัดส่วนสินทรัพย์ผันผวนอยู่ในระดับที่สมดุล',
   })
 
-  // 6. Concentration
-  // conc === null means totalInvestmentAssets = 0 (no investable assets yet) → not concentrated
+  // 6. Concentration — or investment opportunity nudge when no investable assets yet
   const conc = metrics.concentration
   const noInvestments = metrics.totalInvestmentAssets === 0
-  const concLevel: 'green' | 'yellow' | 'red' =
-    noInvestments ? 'green' :
-    conc !== null && conc > T.concentrationWarn ? 'yellow' : 'green'
-  cards.push({
-    id: 'concentration',
-    name: 'การกระจุกตัวของสินทรัพย์',
-    level: concLevel,
-    punchline: noInvestments
-      ? 'ยังไม่มีการลงทุน จึงไม่มีความเสี่ยงกระจุกตัว เมื่อเริ่มลงทุนควรกระจายหลายสินทรัพย์'
-      : concLevel === 'yellow'
+  if (noInvestments) {
+    // Informational green card: encourage starting to invest with risk disclaimer
+    cards.push({
+      id: 'concentration',
+      name: 'โอกาสในการลงทุน',
+      level: 'green',
+      punchline: 'คุณยังไม่มีการลงทุน ลองพิจารณาเริ่มลงทุนเพื่อให้เงินของคุณเติบโตในระยะยาว ทั้งนี้การลงทุนมีความเสี่ยง กรุณาศึกษาและใช้วิจารณญาณก่อนตัดสินใจลงทุนทุกครั้ง',
+      advice: 'เมื่อพร้อม ควรเริ่มด้วยสินทรัพย์ที่เข้าใจและกระจายไปหลายประเภทตั้งแต่ต้น เพื่อลดความเสี่ยงจากตัวเดียว',
+    })
+  } else {
+    const concLevel: 'green' | 'yellow' | 'red' =
+      conc !== null && conc > T.concentrationWarn ? 'yellow' : 'green'
+    cards.push({
+      id: 'concentration',
+      name: 'การกระจุกตัวของสินทรัพย์',
+      level: concLevel,
+      punchline: concLevel === 'yellow'
         ? `สินทรัพย์ลงทุนตัวเดียวมากถึง ${fmtPct(conc!)} ของพอร์ตลงทุน ถ้าตัวนั้นร่วงพอร์ตกระทบหนัก`
         : `พอร์ตมีการกระจายตัวที่ดี ตัวใหญ่สุดคิดเป็น ${fmtPct(conc!)}`,
-    advice: concLevel === 'yellow'
-      ? 'เพิ่มการกระจายไปยังสินทรัพย์ประเภทอื่น เพื่อลดความเสี่ยงจากตัวเดียว'
-      : noInvestments
-        ? 'เมื่อพร้อมลงทุน ควรกระจายไปหลายประเภทสินทรัพย์ตั้งแต่ต้น'
+      advice: concLevel === 'yellow'
+        ? 'เพิ่มการกระจายไปยังสินทรัพย์ประเภทอื่น เพื่อลดความเสี่ยงจากตัวเดียว'
         : 'รักษาการกระจายตัวนี้ไว้',
-  })
+    })
+  }
 
   // 7. Behavioral
   const panicSell = a.portfolioDrop1Month === 'ขายทั้งหมด'
@@ -220,17 +225,6 @@ export function assessAllRisks(metrics: MetricsResult, a: Answers): RiskCard[] {
       ? 'ศึกษา SSF (ซื้อได้ 30% รายได้ สูงสุด 200,000 บาท) และ RMF เพื่อลดภาษีและสร้างเงินออมระยะยาว'
       : 'ใช้สิทธิให้เต็มเพดานทุกปี เพื่อประหยัดภาษีสูงสุด',
   })
-
-  // 11. No investment at all — nudge card shown only when user has zero investable assets
-  if (metrics.totalInvestmentAssets === 0) {
-    cards.push({
-      id: 'no-investment',
-      name: 'ยังไม่มีการลงทุน',
-      level: 'yellow',
-      punchline: 'เงินที่ฝากธนาคารหรือถือสดอยู่ได้รับดอกเบี้ยต่ำกว่าเงินเฟ้อ ทำให้มูลค่าที่แท้จริงลดลงทุกปี การลงทุนช่วยให้เงินของท่านเติบโตในระยะยาวได้',
-      advice: 'พิจารณาเริ่มลงทุนในสินทรัพย์ที่เหมาะกับความเสี่ยงของท่าน อย่างไรก็ตาม การลงทุนมีความเสี่ยง กรุณาศึกษาข้อมูลและใช้วิจารณญาณก่อนตัดสินใจเสมอ',
-    })
-  }
 
   // Sort: red → yellow → green
   const order = { red: 0, yellow: 1, green: 2 }
