@@ -8,7 +8,7 @@ const T = {
   dtiYellow: 0.30,
   concentrationWarn: 0.50,
   savingsRateGood: 0.20,
-  retirementGapFactor: 300, // months of expenses needed
+  retirementGapFallback: 300, // fallback months when lifeExpectancy/retirementAge not usable
 }
 
 function fmt(n: number): string {
@@ -114,22 +114,26 @@ export function assessAllRisks(metrics: MetricsResult, a: Answers): RiskCard[] {
   })
 
   // 6. Concentration
+  // conc === null means totalInvestmentAssets = 0 (no investable assets yet) → not concentrated
   const conc = metrics.concentration
+  const noInvestments = metrics.totalInvestmentAssets === 0
   const concLevel: 'green' | 'yellow' | 'red' =
-    conc === null ? 'green' :
-    conc > T.concentrationWarn ? 'yellow' : 'green'
+    noInvestments ? 'green' :
+    conc !== null && conc > T.concentrationWarn ? 'yellow' : 'green'
   cards.push({
     id: 'concentration',
     name: 'การกระจุกตัวของสินทรัพย์',
     level: concLevel,
-    punchline: conc !== null
-      ? concLevel === 'yellow'
-        ? `สินทรัพย์ลงทุนตัวเดียวมากถึง ${fmtPct(conc)} ของพอร์ตลงทุน ถ้าตัวนั้นร่วงพอร์ตกระทบหนัก`
-        : `พอร์ตมีการกระจายตัวที่ดี ตัวใหญ่สุดคิดเป็น ${fmtPct(conc)}`
-      : 'ยังไม่มีสินทรัพย์ลงทุน',
+    punchline: noInvestments
+      ? 'ยังไม่มีการลงทุน จึงไม่มีความเสี่ยงกระจุกตัว เมื่อเริ่มลงทุนควรกระจายหลายสินทรัพย์'
+      : concLevel === 'yellow'
+        ? `สินทรัพย์ลงทุนตัวเดียวมากถึง ${fmtPct(conc!)} ของพอร์ตลงทุน ถ้าตัวนั้นร่วงพอร์ตกระทบหนัก`
+        : `พอร์ตมีการกระจายตัวที่ดี ตัวใหญ่สุดคิดเป็น ${fmtPct(conc!)}`,
     advice: concLevel === 'yellow'
       ? 'เพิ่มการกระจายไปยังสินทรัพย์ประเภทอื่น เพื่อลดความเสี่ยงจากตัวเดียว'
-      : 'รักษาการกระจายตัวนี้ไว้',
+      : noInvestments
+        ? 'เมื่อพร้อมลงทุน ควรกระจายไปหลายประเภทสินทรัพย์ตั้งแต่ต้น'
+        : 'รักษาการกระจายตัวนี้ไว้',
   })
 
   // 7. Behavioral
@@ -152,20 +156,28 @@ export function assessAllRisks(metrics: MetricsResult, a: Answers): RiskCard[] {
   })
 
   // 8. Retirement gap
+  // retirementMonths = (lifeExpectancy - retirementAge) × 12, from user's own answers.
+  // Falls back to 300 months if the derived value is unusable (lifeExpectancy ≤ retirementAge).
   const monthlyRetirement = a.monthlyExpenseAfterRetirement || a.monthlyExpenses || 0
-  const retirementNeeded = monthlyRetirement * T.retirementGapFactor
+  const lifeExp = a.expectedLifespan || 0
+  const retAge = a.retirementAge || 0
+  const retirementMonthsDerived = (lifeExp - retAge) * 12
+  const usingFallback = retirementMonthsDerived <= 0
+  const retirementMonths = usingFallback ? T.retirementGapFallback : retirementMonthsDerived
+  const retirementNeeded = monthlyRetirement * retirementMonths
   const currentSavings = a.currentRetirementSavings || 0
   const yearsLeft = metrics.yearsToRetirement
   const projectedSavings = currentSavings + (a.monthlySavings || 0) * 12 * yearsLeft
   const gap = retirementNeeded - projectedSavings
   const retLevel: 'green' | 'yellow' | 'red' = gap > retirementNeeded * 0.5 ? 'red' : gap > 0 ? 'yellow' : 'green'
+  const retirementYears = Math.round(retirementMonths / 12)
   cards.push({
     id: 'retirement',
     name: 'ความพร้อมเกษียณ',
     level: retLevel,
     punchline: retLevel === 'green'
-      ? `แนวโน้มเงินเกษียณอยู่ที่ ${fmtBaht(projectedSavings)} ซึ่งครอบคลุมความต้องการ ${fmtBaht(retirementNeeded)} ได้`
-      : `ต้องการเงินเกษียณประมาณ ${fmtBaht(retirementNeeded)} แต่แนวโน้มมีเพียง ${fmtBaht(projectedSavings)} ยังขาดอยู่ ${fmtBaht(gap)}`,
+      ? `แนวโน้มเงินเกษียณอยู่ที่ ${fmtBaht(projectedSavings)} ครอบคลุมความต้องการ ${fmtBaht(retirementNeeded)} (${retirementYears} ปีหลังเกษียณ${usingFallback ? ' ค่าประมาณ' : ''}) ได้`
+      : `ต้องการเงินเกษียณ ${fmtBaht(retirementNeeded)} (${retirementYears} ปีหลังเกษียณ${usingFallback ? ' ค่าประมาณ' : ''}) แต่แนวโน้มมีเพียง ${fmtBaht(projectedSavings)} ขาดอยู่ ${fmtBaht(gap)}`,
     advice: retLevel !== 'green'
       ? `เพิ่มการออมเพื่อเกษียณ เช่น RMF/SSF และลงทุนให้เงินงอกเงย เพื่อปิด gap ${fmtBaht(gap)}`
       : 'เส้นทางเกษียณดูดีแล้ว รักษาระเบียบวินัยการออมไว้',
