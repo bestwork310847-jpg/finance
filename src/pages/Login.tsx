@@ -2,6 +2,16 @@ import React, { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useAuth } from '../auth/AuthContext'
 
+const ADMIN_UID = import.meta.env.VITE_ADMIN_USER_ID as string
+
+function adminRedirect(userId: string | undefined, navigate: ReturnType<typeof useNavigate>) {
+  if (ADMIN_UID && userId === ADMIN_UID) {
+    navigate('/admin')
+  } else {
+    navigate('/consent')
+  }
+}
+
 export default function Login() {
   const [mode, setMode] = useState<'signin' | 'signup'>('signin')
   const [email, setEmail] = useState('')
@@ -9,7 +19,7 @@ export default function Login() {
   const [error, setError] = useState<string | null>(null)
   const [loading, setLoading] = useState(false)
   const [done, setDone] = useState(false)
-  const { signIn, signUp, signInWithGoogle } = useAuth()
+  const { signIn, signUp, signInWithGoogle, user } = useAuth()
   const navigate = useNavigate()
 
   async function handleSubmit(e: React.FormEvent) {
@@ -22,7 +32,10 @@ export default function Login() {
     setLoading(false)
     if (err) { setError(err); return }
     if (mode === 'signup') { setDone(true); return }
-    navigate('/consent')
+    // user state อาจยังไม่ update ทัน ให้ดึง id จาก supabase โดยตรง
+    const { supabase } = await import('../lib/supabase')
+    const uid = supabase ? (await supabase.auth.getUser()).data.user?.id : undefined
+    adminRedirect(uid, navigate)
   }
 
   async function handleGoogle() {
