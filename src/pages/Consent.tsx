@@ -1,7 +1,9 @@
-import React, { useState } from 'react'
+import React, { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
+import { useAuth } from '../auth/AuthContext'
 
 const CONSENT_KEY = 'pdpa_consent_given'
+const ADMIN_UID = import.meta.env.VITE_ADMIN_USER_ID as string
 
 export function hasConsent(): boolean {
   return localStorage.getItem(CONSENT_KEY) === 'true'
@@ -10,6 +12,15 @@ export function hasConsent(): boolean {
 export default function Consent() {
   const [checked, setChecked] = useState(false)
   const navigate = useNavigate()
+  const { user, loading } = useAuth()
+
+  // ถ้าเป็นแอดมิน ข้ามหน้า consent แล้วไป /admin ทันที
+  useEffect(() => {
+    if (loading) return
+    if (ADMIN_UID && user?.id === ADMIN_UID) {
+      navigate('/admin')
+    }
+  }, [loading, user])
 
   function handleAccept() {
     if (!checked) return
