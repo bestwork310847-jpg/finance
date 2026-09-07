@@ -221,6 +221,17 @@ export function assessAllRisks(metrics: MetricsResult, a: Answers): RiskCard[] {
       : 'ใช้สิทธิให้เต็มเพดานทุกปี เพื่อประหยัดภาษีสูงสุด',
   })
 
+  // 11. No investment at all — nudge card shown only when user has zero investable assets
+  if (metrics.totalInvestmentAssets === 0) {
+    cards.push({
+      id: 'no-investment',
+      name: 'ยังไม่มีการลงทุน',
+      level: 'yellow',
+      punchline: 'เงินที่ฝากธนาคารหรือถือสดอยู่ได้รับดอกเบี้ยต่ำกว่าเงินเฟ้อ ทำให้มูลค่าที่แท้จริงลดลงทุกปี การลงทุนช่วยให้เงินของท่านเติบโตในระยะยาวได้',
+      advice: 'พิจารณาเริ่มลงทุนในสินทรัพย์ที่เหมาะกับความเสี่ยงของท่าน อย่างไรก็ตาม การลงทุนมีความเสี่ยง กรุณาศึกษาข้อมูลและใช้วิจารณญาณก่อนตัดสินใจเสมอ',
+    })
+  }
+
   // Sort: red → yellow → green
   const order = { red: 0, yellow: 1, green: 2 }
   return cards.sort((a, b) => order[a.level] - order[b.level])
