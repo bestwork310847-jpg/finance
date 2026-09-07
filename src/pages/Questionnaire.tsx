@@ -122,14 +122,11 @@ export default function Questionnaire() {
   const { user, loading } = useAuth()
   const navigate = useNavigate()
 
-  const ADMIN_UID = import.meta.env.VITE_ADMIN_USER_ID as string
-
   useEffect(() => {
     if (loading) return
     if (supabase && !user) { navigate('/login'); return }
-    if (supabase && user) {
-      if (ADMIN_UID && user.id === ADMIN_UID) { navigate('/admin'); return }
-      if (localStorage.getItem('pdpa_consent_given') !== 'true') { navigate('/consent'); return }
+    if (supabase && user && localStorage.getItem('pdpa_consent_given') !== 'true') {
+      navigate('/consent')
     }
   }, [loading, user])
 
