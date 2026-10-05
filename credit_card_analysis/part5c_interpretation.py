@@ -38,7 +38,7 @@ def bin_label(col, b):
         return b
     k, inner = int(b), edges[1:-1]                             # ขอบที่ใช้แบ่ง Bin ตอนฝึก
     if col in UNIT:                                            # สัดส่วน -> %
-        fmt = lambda v: f"{v * 100:.0f}%"
+        fmt = lambda v: f"{v * 100:.1f}%" if abs(v) < 0.1 else f"{v * 100:.0f}%"   # ค่าเล็กใช้ทศนิยม 1 ตำแหน่ง
     elif col == "UTIL_TREND":                                  # แนวโน้ม -> ทศนิยม 1 ตำแหน่ง
         fmt = lambda v: f"{v:+.1f}"
     else:                                                      # เงิน / อายุ -> จำนวนเต็มมีคั่นหลัก
