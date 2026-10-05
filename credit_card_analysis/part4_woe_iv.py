@@ -50,7 +50,7 @@ print(f"Good = {(y == 0).sum():,}  Bad = {(y == 1).sum():,}")
 # ตัวแปรที่ไม่ใช่ตัวทำนาย: ID (รหัส), DEFAULT (คำตอบ)
 CANDIDATES = [c for c in df.columns if c not in ("ID", "DEFAULT")]
 
-PAY_STATUS = [f"PAY_{i}" for i in range(1, 7)]                 # สถานะชำระ: รหัส -2..8
+PAY_STATUS = ["PAY_0", "PAY_2", "PAY_3", "PAY_4", "PAY_5", "PAY_6"]  # สถานะชำระ: รหัส -2..8 (ชื่อตามต้นฉบับ)
 DELAY_COLS = [f"DELAY_{i}" for i in range(1, 7)]               # จำนวนเดือนที่ค้าง: 0..8
 
 
@@ -123,9 +123,9 @@ for _, r in iv_table.iterrows():
     if r["IV"] < 0.02:
         decision[r["ตัวแปร"]] = ("ตัด", f"IV = {r['IV']:.4f} < 0.02 แทบไม่มีพลังทำนาย")
 
-# กฎ 2: DELAY_i คือ PAY_i ที่ตัดค่าติดลบเป็น 0 -> ข้อมูลซ้ำ เก็บ PAY_i ไว้เพราะละเอียดกว่า
-for i in range(1, 7):
-    decision.setdefault(f"DELAY_{i}", ("ตัด", f"ซ้ำกับ PAY_{i} (สร้างมาจาก PAY_{i}) และ IV ต่ำกว่า"))
+# กฎ 2: DELAY_i คือ PAY_x ของเดือนเดียวกันที่ตัดค่าติดลบเป็น 0 -> ข้อมูลซ้ำ เก็บ PAY_x ไว้เพราะละเอียดกว่า
+for i, pay in enumerate(PAY_STATUS, start=1):
+    decision.setdefault(f"DELAY_{i}", ("ตัด", f"ซ้ำกับ {pay} (สร้างมาจาก {pay}) และ IV ต่ำกว่า"))
 
 # กฎ 3: ไล่จาก IV สูงไปต่ำ ถ้าสหสัมพันธ์ของ WoE กับตัวที่เก็บแล้ว > 0.7 -> ตัด
 CORR_LIMIT = 0.7

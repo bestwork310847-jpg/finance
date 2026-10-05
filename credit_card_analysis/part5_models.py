@@ -55,7 +55,7 @@ if os.path.isfile(SELECTION):                                  # อ่านผ
     sel = pd.read_csv(SELECTION)
     FEATURES = sel.loc[sel["ผล"] == "เก็บ", "ตัวแปร"].tolist()
 else:                                                          # ไม่มี file -> ใช้รายชื่อจากผล Part 4
-    FEATURES = ["PAY_1", "MAX_DELAY", "PAY_2", "PAY_3", "PAY_4", "PAY_5", "PAY_6", "LIMIT_BAL",
+    FEATURES = ["PAY_0", "MAX_DELAY", "PAY_2", "PAY_3", "PAY_4", "PAY_5", "PAY_6", "LIMIT_BAL",
                 "PAY_AMT1", "PAY_AMT2", "AVG_UTIL", "PAY_AMT3", "PAY_RATIO", "UTIL_TREND",
                 "PAY_AMT6", "PAY_AMT4", "PAY_AMT5", "EDUCATION", "AGE"]
 print(f"ใช้ {len(FEATURES)} ตัวแปร: {', '.join(FEATURES)}")
@@ -71,7 +71,7 @@ print(f"ชุดทดสอบ : {len(X_test):,} คน (ผิดนัด {y
 # ----------------------------------------------------------------------
 # 3) แบบจำลองที่ 1: Logistic Regression บน WoE
 # ----------------------------------------------------------------------
-PAY_LIKE = [f"PAY_{i}" for i in range(1, 7)] + ["MAX_DELAY"]   # ตัวแปรรหัสสถานะ -> ใช้ค่าจริง, 3+ รวมกัน
+PAY_LIKE = ["PAY_0", "PAY_2", "PAY_3", "PAY_4", "PAY_5", "PAY_6"] + ["MAX_DELAY"]   # ตัวแปรรหัสสถานะ -> ใช้ค่าจริง, 3+ รวมกัน
 
 
 def fit_bins(s, name):

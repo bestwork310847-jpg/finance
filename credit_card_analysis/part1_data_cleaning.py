@@ -185,11 +185,10 @@ def clean(df: pd.DataFrame, dup_mask: pd.Series) -> pd.DataFrame:
     section("6) จัดการข้อมูล")
     df = df.copy()
 
-    # 6.1 เปลี่ยนชื่อคอลัมน์ให้สม่ำเสมอ
-    #   - PAY_0 -> PAY_1 ให้เลขเดือนตรงกับ BILL_AMT1 / PAY_AMT1 (ก.ย.)
-    #   - ชื่อ target มีจุด ใช้ยากใน pandas -> DEFAULT
-    df = df.rename(columns={"PAY_0": "PAY_1", TARGET: "DEFAULT"})
-    pay_cols = [f"PAY_{i}" for i in range(1, 7)]
+    # 6.1 เปลี่ยนชื่อ target (มีจุด ใช้ยากใน pandas) -> DEFAULT
+    #     สถานะชำระคงชื่อเดิมตามต้นฉบับ: PAY_0 (ก.ย.), PAY_2 (ส.ค.) ... PAY_6 (เม.ย.)
+    df = df.rename(columns={TARGET: "DEFAULT"})
+    pay_cols = PAY_COLS
 
     # 6.2 ธงแถวที่ feature ซ้ำกัน -> ไม่ลบ แต่ทำธงไว้ให้ตรวจสอบภายหลัง
     #     (ต้องทำก่อนตัดแถวในข้อ 6.3 เพราะ dup_mask คำนวณจากข้อมูลเต็ม 30,000 แถว)
@@ -210,7 +209,8 @@ def clean(df: pd.DataFrame, dup_mask: pd.Series) -> pd.DataFrame:
     print(f"EDUCATION หลังตัด: {df['EDUCATION'].value_counts().sort_index().to_dict()}")
     print(f"MARRIAGE  หลังตัด: {df['MARRIAGE'].value_counts().sort_index().to_dict()}")
 
-    # 6.4 PAY_x: เก็บรหัสเดิมไว้ (มีข้อมูลพฤติกรรม) + สร้างคอลัมน์ "จำนวนเดือนที่ค้าง"
+    # 6.4 PAY_x: เก็บรหัสเดิมไว้ (DELAY_1 มาจาก PAY_0, DELAY_2 จาก PAY_2, ... เลขตามเดือนเหมือน BILL_AMT)
+    #     เก็บรหัสเดิมไว้ (มีข้อมูลพฤติกรรม) + สร้างคอลัมน์ "จำนวนเดือนที่ค้าง"
     #   -2 = ไม่มีการใช้บัตร, -1 = จ่ายเต็ม, 0 = จ่ายขั้นต่ำ (revolving) -> ทั้งหมดคือ "ไม่ค้าง" = 0
     for i, col in enumerate(pay_cols, start=1):
         df[f"DELAY_{i}"] = df[col].clip(lower=0)
