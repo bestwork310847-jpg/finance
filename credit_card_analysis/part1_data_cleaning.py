@@ -8,7 +8,8 @@ Part 1 — ทำความสะอาดข้อมูล (Data Cleaning)
     3. หารหัสซ้ำ — ID ซ้ำ, แถวซ้ำทั้งแถว, และแถวที่ข้อมูลเหมือนกันแต่ ID ต่างกัน
     4. หารหัสที่เอกสารไม่ได้อธิบายไว้ (EDUCATION 0, MARRIAGE 0, PAY_x = -2/0)
     5. ตรวจค่าตัวเลขที่ดูแปลก (BILL_AMT ติดลบ, ช่วงอายุ, วงเงิน)
-    6. จัดการแต่ละปัญหาตามที่ตัดสินใจไว้ (ตัดแถวที่การศึกษา/สถานภาพเป็น "ไม่ทราบ") แล้วบันทึกไฟล์
+    6. จัดการแต่ละปัญหาตามที่ตัดสินใจไว้ (ตัดแถวที่การศึกษา/สถานภาพเป็น "ไม่ทราบ")
+    7. สรุปเป็นตารางว่าแต่ละปัญหามีกี่แถว จัดการอย่างไร แล้วบันทึกไฟล์
 
 วิธีรัน (Google Colab)
     1. อัปโหลด UCI_Credit_Card.csv ไว้ที่ไหนก็ได้ใน Google Drive
@@ -226,6 +227,47 @@ def clean(df: pd.DataFrame, dup_mask: pd.Series) -> pd.DataFrame:
     return df
 
 
+# ----------------------------------------------------------------------
+# 7) ตารางสรุปจำนวนข้อมูล
+# ----------------------------------------------------------------------
+def summary_table(raw: pd.DataFrame, clean_df: pd.DataFrame, dup_mask: pd.Series) -> pd.DataFrame:
+    section("7) ตารางสรุปจำนวนข้อมูล")
+    n = len(raw)                                                         # จำนวนแถวเริ่มต้น
+    edu_unknown = raw["EDUCATION"].isin([0, 5, 6])                       # การศึกษาไม่ทราบ
+    mar_unknown = raw["MARRIAGE"] == 0                                   # สถานภาพไม่ทราบ
+    dropped = edu_unknown | mar_unknown                                  # แถวที่ตัด (นับไม่ซ้ำ)
+
+    rows = [  # (รายการ, จำนวนแถว, วิธีจัดการ)
+        ("ข้อมูลเริ่มต้น", n, "-"),
+        ("ค่าว่าง (NaN) — แถวที่มีอย่างน้อย 1 ช่อง", int(raw.isna().any(axis=1).sum()), "ไม่มี ไม่ต้องทำ"),
+        ("ID ซ้ำ", int(raw["ID"].duplicated().sum()), "ไม่มี ไม่ต้องทำ"),
+        ("แถวซ้ำทั้งแถว", int(raw.duplicated().sum()), "ไม่มี ไม่ต้องทำ"),
+        ("ข้อมูลเหมือนกันแต่ ID ต่าง", int(dup_mask.sum()), "เก็บไว้ + ธง DUP_PROFILE"),
+        ("EDUCATION = 0 (ไม่มีในเอกสาร)", int((raw["EDUCATION"] == 0).sum()), "ตัดออก"),
+        ("EDUCATION = 5 (ไม่ทราบ)", int((raw["EDUCATION"] == 5).sum()), "ตัดออก"),
+        ("EDUCATION = 6 (ไม่ทราบ)", int((raw["EDUCATION"] == 6).sum()), "ตัดออก"),
+        ("MARRIAGE = 0 (ไม่มีในเอกสาร)", int(mar_unknown.sum()), "ตัดออก"),
+        ("รวมแถวที่ตัดออก (นับไม่ซ้ำ)", int(dropped.sum()), "ตัดออก"),
+        ("BILL_AMT ติดลบ (จ่ายเกิน)", int((raw[BILL_COLS] < 0).any(axis=1).sum()), "เก็บไว้ + ธง HAS_CREDIT_BALANCE"),
+        ("ข้อมูลหลังทำความสะอาด", len(clean_df), "-"),
+    ]
+    table = pd.DataFrame(rows, columns=["รายการ", "จำนวนแถว", "วิธีจัดการ"])
+    table["% ของทั้งหมด"] = (table["จำนวนแถว"] / n * 100).round(2)  # สัดส่วนเทียบกับ 30,000 แถว
+    table = table[["รายการ", "จำนวนแถว", "% ของทั้งหมด", "วิธีจัดการ"]]
+    try:                                                                 # ใน Colab/Jupyter แสดงเป็นตารางสวย ๆ
+        from IPython import get_ipython
+        from IPython.display import display
+        if get_ipython() is None:
+            raise ImportError
+        display(table.style.hide(axis="index"))
+    except ImportError:                                                  # รันนอก notebook -> พิมพ์เป็นข้อความ
+        print(table.to_string(index=False))
+
+    print(f"\nคอลัมน์: {raw.shape[1]} -> {clean_df.shape[1]}  |  "
+          f"อัตรา default: {raw[TARGET].mean():.1%} -> {clean_df['DEFAULT'].mean():.1%}")
+    return table
+
+
 def main() -> None:
     df = load_data(INPUT_PATH)
     check_missing(df)
@@ -234,8 +276,10 @@ def main() -> None:
     check_numeric_ranges(df)
     clean_df = clean(df, dup_mask)
 
+    summary_table(df, clean_df, dup_mask)
+
     clean_df.to_csv(OUTPUT_PATH, index=False)
-    print(f"บันทึกไฟล์: {OUTPUT_PATH}")
+    print(f"\nบันทึกไฟล์: {OUTPUT_PATH}")
 
 
 if __name__ == "__main__":
