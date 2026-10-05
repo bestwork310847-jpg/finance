@@ -8,7 +8,7 @@ Part 1 — ทำความสะอาดข้อมูล (Data Cleaning)
     3. หารหัสซ้ำ — ID ซ้ำ, แถวซ้ำทั้งแถว, และแถวที่ข้อมูลเหมือนกันแต่ ID ต่างกัน
     4. หารหัสที่เอกสารไม่ได้อธิบายไว้ (EDUCATION 0, MARRIAGE 0, PAY_x = -2/0)
     5. ตรวจค่าตัวเลขที่ดูแปลก (BILL_AMT ติดลบ, ช่วงอายุ, วงเงิน)
-    6. จัดการแต่ละปัญหาตามที่ตัดสินใจไว้ แล้วบันทึกไฟล์ที่สะอาดแล้ว
+    6. จัดการแต่ละปัญหาตามที่ตัดสินใจไว้ (ตัดแถวที่การศึกษา/สถานภาพเป็น "ไม่ทราบ") แล้วบันทึกไฟล์
 
 วิธีรัน (Google Colab)
     1. อัปโหลด UCI_Credit_Card.csv ไว้ที่ไหนก็ได้ใน Google Drive
@@ -190,17 +190,24 @@ def clean(df: pd.DataFrame, dup_mask: pd.Series) -> pd.DataFrame:
     df = df.rename(columns={"PAY_0": "PAY_1", TARGET: "DEFAULT"})
     pay_cols = [f"PAY_{i}" for i in range(1, 7)]
 
-    # 6.2 ธงบอกว่าเดิมเป็นรหัส "ไม่ทราบ" (ทำก่อนแก้ค่า ไม่งั้นข้อมูลนี้จะหายไป)
-    df["EDUCATION_UNKNOWN"] = df["EDUCATION"].isin([0, 5, 6]).astype(int)
-    df["MARRIAGE_UNKNOWN"] = (df["MARRIAGE"] == 0).astype(int)
+    # 6.2 ธงแถวที่ feature ซ้ำกัน -> ไม่ลบ แต่ทำธงไว้ให้ตรวจสอบภายหลัง
+    #     (ต้องทำก่อนตัดแถวในข้อ 6.3 เพราะ dup_mask คำนวณจากข้อมูลเต็ม 30,000 แถว)
+    df["DUP_PROFILE"] = dup_mask.astype(int)
 
-    # 6.3 EDUCATION: 5 และ 6 ความหมายเดียวกัน ("ไม่ทราบ") ส่วน 0 ไม่มีในเอกสาร
-    #     -> รวมทั้งสามเป็น 5 = "ไม่ทราบ" (ไม่รวมกับ 4 เพราะ "อื่น ๆ" ≠ "ไม่ทราบ")
-    #     MARRIAGE 0 ไม่มีในเอกสารและไม่มีรหัส "ไม่ทราบ" -> รวมกับ 3 (อื่น ๆ)
-    df["EDUCATION"] = df["EDUCATION"].replace({0: 5, 6: 5})
-    df["MARRIAGE"] = df["MARRIAGE"].replace({0: 3})
-    print(f"EDUCATION หลังรวมรหัส: {df['EDUCATION'].value_counts().sort_index().to_dict()}")
-    print(f"MARRIAGE  หลังรวมรหัส: {df['MARRIAGE'].value_counts().sort_index().to_dict()}")
+    # 6.3 ตัดแถวที่การศึกษา/สถานภาพสมรสเป็น "ไม่ทราบ" หรือไม่มีในเอกสาร
+    #     EDUCATION 5, 6 = ไม่ทราบ (ตามเอกสาร), EDUCATION 0 และ MARRIAGE 0 = ไม่มีในเอกสาร
+    #     เหตุผล: ตีความไม่ได้ + เป็นหมวดหมู่ เติมค่าแทนอย่างสมเหตุสมผลไม่ได้
+    #            + มีแค่ ~1.3% ของข้อมูล ตัดแล้วอัตรา default แทบไม่เปลี่ยน
+    unknown = df["EDUCATION"].isin([0, 5, 6]) | (df["MARRIAGE"] == 0)   # แถวที่ไม่รู้ค่า
+    rate_before = df["DEFAULT"].mean()                                   # อัตรา default ก่อนตัด
+    rate_dropped = df.loc[unknown, "DEFAULT"].mean()                     # อัตรา default ของกลุ่มที่ตัด
+    df = df[~unknown].reset_index(drop=True)                             # เก็บเฉพาะแถวที่รู้ค่า
+    print(f"ตัดแถวที่ไม่ทราบการศึกษา/สถานภาพ: {int(unknown.sum())} แถว "
+          f"({unknown.mean():.1%}) เหลือ {len(df)} แถว")
+    print(f"  อัตรา default: ก่อนตัด {rate_before:.1%} -> หลังตัด {df['DEFAULT'].mean():.1%} "
+          f"(กลุ่มที่ตัด {rate_dropped:.1%})")
+    print(f"EDUCATION หลังตัด: {df['EDUCATION'].value_counts().sort_index().to_dict()}")
+    print(f"MARRIAGE  หลังตัด: {df['MARRIAGE'].value_counts().sort_index().to_dict()}")
 
     # 6.4 PAY_x: เก็บรหัสเดิมไว้ (มีข้อมูลพฤติกรรม) + สร้างคอลัมน์ "จำนวนเดือนที่ค้าง"
     #   -2 = ไม่มีการใช้บัตร, -1 = จ่ายเต็ม, 0 = จ่ายขั้นต่ำ (revolving) -> ทั้งหมดคือ "ไม่ค้าง" = 0
@@ -211,14 +218,11 @@ def clean(df: pd.DataFrame, dup_mask: pd.Series) -> pd.DataFrame:
     # 6.5 BILL_AMT ติดลบ = ลูกค้าจ่ายเกิน (มียอดเครดิตคงเหลือ) -> เก็บไว้ + ทำธง
     df["HAS_CREDIT_BALANCE"] = (df[BILL_COLS] < 0).any(axis=1).astype(int)
 
-    # 6.6 แถวที่ feature ซ้ำกัน -> ไม่ลบ แต่ทำธงไว้ให้ตรวจสอบภายหลัง
-    df["DUP_PROFILE"] = dup_mask.astype(int).values
-
-    # 6.7 ชนิดข้อมูล: ยอดเงินเป็นจำนวนเต็มอยู่แล้ว (float เพราะรูปแบบไฟล์) -> int
+    # 6.6 ชนิดข้อมูล: ยอดเงินเป็นจำนวนเต็มอยู่แล้ว (float เพราะรูปแบบไฟล์) -> int
     money = ["LIMIT_BAL"] + BILL_COLS + PAY_AMT_COLS
     df[money] = df[money].round().astype("int64")
 
-    print(f"\nขนาดข้อมูลหลังทำความสะอาด: {df.shape} (ไม่มีการลบแถว)")
+    print(f"\nขนาดข้อมูลหลังทำความสะอาด: {df.shape}")
     return df
 
 
