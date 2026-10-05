@@ -4,17 +4,17 @@
 ผลลัพธ์: `UCI_Credit_Card_clean.csv` บันทึกไว้ folder เดียวกับไฟล์ต้นฉบับใน Drive (30,000 แถว, 35 คอลัมน์)
 
 ## การตั้ง path ไฟล์ (Google Drive)
-1. อัปโหลด `UCI_Credit_Card.csv` ไว้ใน folder ไหนก็ได้ใน Drive เช่น `MyDrive/งาน/UCI_Credit_Card/`
-2. ตั้งชื่อ folder ให้ตรงกับ `DATA_FOLDER` ในสคริปต์ (ค่าเริ่มต้น `"UCI_Credit_Card"`)
-3. รัน cell แล้ว Colab จะขออนุญาตเชื่อม Drive
+1. อัปโหลด `UCI_Credit_Card.csv` ไว้ที่ไหนก็ได้ใน Drive (หรืออัปโหลดเข้า Colab ตรง ๆ ก็ได้)
+2. รัน cell แล้ว Colab จะขออนุญาตเชื่อม Drive
 
 สคริปต์จะ:
 - `drive.mount(...)` เชื่อม Drive เข้ากับ `/content/drive`
-- `find_folder` ใช้ `os.walk` ไล่หา folder ชื่อ `DATA_FOLDER` ทุกชั้นใน `MyDrive` (ข้าม folder ซ่อน) ไม่ต้องพิมพ์ path เต็มเอง
-- เช็กว่ามี `DATA_FILE` อยู่ใน folder จริง ถ้าไม่มีจะหยุดและแสดงชื่อไฟล์ .csv ที่มีอยู่ให้เทียบ
+- `find_file` ใช้ `os.walk` ไล่หา **ไฟล์** ชื่อ `DATA_FILE` ทุกชั้นใน `MyDrive`, `Shareddrives` และ `/content` (ไม่สนตัวพิมพ์เล็ก/ใหญ่ และรับชื่อที่ Drive เติม ` (1)` ตอนอัปซ้ำได้)
+- ถ้ามีไฟล์ชื่อนี้หลายที่ ให้ตั้ง `DATA_FOLDER = "ชื่อ folder"` เพื่อบังคับว่าจะเอาจาก folder ไหน
+- ถ้าหาไม่เจอ จะแสดงรายชื่อ .csv ที่เจอใน Drive ให้เทียบว่าชื่อจริงคืออะไร
 - พิมพ์ path จริงของ folder, input และ output ออกมาให้ตรวจ
 
-ถ้ารันนอก Colab (ไม่มี `google.colab`) จะค้นหา folder จาก folder ที่รันแทน
+ถ้ารันนอก Colab (ไม่มี `google.colab`) จะค้นหาจาก folder ที่รันแทน
 
 ## สรุปสิ่งที่พบและวิธีจัดการ
 
@@ -41,5 +41,5 @@
 3. `check_duplicates` — ตรวจ ID ซ้ำ แถวซ้ำ และแถวที่ข้อมูลเหมือนกันเมื่อไม่นับ ID/target จากนั้นดูว่ากลุ่มเหล่านั้นมีผลลัพธ์ต่างกันไหม
 4. `check_undocumented_codes` — เทียบค่าจริงกับรหัสในเอกสาร (`DOCUMENTED_CODES`)
 5. `check_numeric_ranges` — ดู min/max และค่าที่ติดลบหรือผิดปกติ
-0. ส่วนตั้งค่า path — เชื่อม Drive, หา folder ด้วย `find_folder`, เช็กว่ามีไฟล์ แล้วกำหนด `INPUT_PATH` / `OUTPUT_PATH`
+0. ส่วนตั้งค่า path — เชื่อม Drive, หาไฟล์ด้วย `find_file` แล้วกำหนด `INPUT_PATH` / `OUTPUT_PATH`
 6. `clean` — แก้ตามตารางด้านบน (ทำธงก่อนเปลี่ยนค่า เพื่อไม่ให้ข้อมูลเดิมหาย) แล้วบันทึกไฟล์

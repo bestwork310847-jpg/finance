@@ -11,44 +11,62 @@ Part 1 — ทำความสะอาดข้อมูล (Data Cleaning)
     6. จัดการแต่ละปัญหาตามที่ตัดสินใจไว้ แล้วบันทึกไฟล์ที่สะอาดแล้ว
 
 วิธีรัน (Google Colab)
-    1. อัปโหลด UCI_Credit_Card.csv ไว้ใน Google Drive ใน folder ชื่อตาม DATA_FOLDER
+    1. อัปโหลด UCI_Credit_Card.csv ไว้ที่ไหนก็ได้ใน Google Drive
     2. วางโค้ดนี้ใน cell แล้วรัน — Colab จะขออนุญาตเชื่อม Drive ครั้งแรก
 """
 
-import glob                                                 # หา file ด้วย pattern
 import os                                                   # จัดการ path / เดิน folder
+import re                                                   # ตัด " (1)" ท้ายชื่อ file
 
 import pandas as pd                                         # จัดการตารางข้อมูล
 
 # ---------- ตั้งค่า (แก้ตรงนี้) ----------
-DATA_FOLDER = "UCI_Credit_Card"                             # ชื่อ folder ใน Drive ที่เก็บ file ข้อมูล
 DATA_FILE = "UCI_Credit_Card.csv"                           # ชื่อ file ข้อมูล
+DATA_FOLDER = None                                          # ชื่อ folder ที่เก็บ file (None = หาทั้ง Drive)
 
 # ---------- เชื่อม Google Drive ----------
 try:
     from google.colab import drive                          # module ของ Colab
     drive.mount("/content/drive", force_remount=False)      # เชื่อม Drive เข้ากับ /content/drive
-    SEARCH_ROOTS = ["/content/drive/MyDrive"]               # จุดเริ่มค้นหา = Drive ของฉัน
+    SEARCH_ROOTS = ["/content/drive/MyDrive",               # จุดเริ่มค้นหา = Drive ของฉัน
+                    "/content/drive/Shareddrives",          # + Shared drive (ถ้ามี)
+                    "/content"]                             # + file ที่อัปโหลดเข้า Colab ตรง ๆ
 except ImportError:                                         # ไม่ได้รันบน Colab (เช่นรันในเครื่อง)
     SEARCH_ROOTS = [os.getcwd()]                            # ค้นหาจาก folder ที่รันแทน
 
 
-def find_folder(name, roots):                               # function หา folder ตามชื่อ
+def normalize(name):                                        # ทำชื่อ file ให้เทียบกันง่าย
+    stem, ext = os.path.splitext(name.lower())              # ตัวเล็กทั้งหมด + แยกนามสกุล
+    stem = re.sub(r"\s*\(\d+\)$", "", stem)                # ตัด " (1)" ที่ Drive เติมให้ตอนอัปซ้ำ
+    return stem.replace(" ", "_") + ext                     # ช่องว่าง = ขีดล่าง
+
+
+def find_file(file_name, roots, folder=None):               # function หา file ตามชื่อ
+    target = normalize(file_name)                           # ชื่อที่ต้องการ (ทำให้เทียบง่าย)
+    csv_seen = []                                           # เก็บ csv ที่เจอไว้ช่วยบอกถ้าหาไม่เจอ
     for root in roots:                                      # ไล่ทุกจุดเริ่มค้นหา
-        for dirpath, dirnames, _ in os.walk(root):          # เดินลงทุก folder ย่อย
-            dirnames[:] = [d for d in dirnames if not d.startswith(".")]  # ข้าม folder ซ่อนเพื่อความเร็ว
-            if os.path.basename(dirpath) == name:           # ถ้าชื่อ folder ตรงกับที่หา
-                return dirpath                              # คืน path ทันที
-    raise FileNotFoundError(f"หา folder ไม่เจอ: {name}")    # ถ้าไม่เจอให้หยุดพร้อมบอกชื่อ
+        if not os.path.isdir(root):                         # จุดไหนไม่มีอยู่จริงก็ข้าม
+            continue
+        for dirpath, dirnames, filenames in os.walk(root):  # เดินลงทุก folder ย่อย
+            dirnames[:] = [d for d in dirnames              # ข้าม folder ซ่อน + drive (กันวนซ้ำจาก /content)
+                           if not d.startswith(".") and d not in ("drive", "sample_data")]
+            if folder and os.path.basename(dirpath) != folder:  # ถ้าระบุ folder แต่ไม่ใช่ folder นี้
+                continue                                    # ข้ามไป
+            for f in filenames:                             # ไล่ทุก file ใน folder
+                if normalize(f) == target:                  # ถ้าชื่อตรง
+                    return os.path.join(dirpath, f)         # คืน path ทันที
+                if f.lower().endswith(".csv"):              # จด csv อื่นไว้
+                    csv_seen.append(os.path.join(dirpath, f))
+    hint = "\n  ".join(csv_seen[:20]) or "(ไม่เจอ csv เลย)"  # csv ที่เจอ (สูงสุด 20 file)
+    raise FileNotFoundError(                                # หยุดพร้อมบอกว่าเจออะไรบ้าง
+        f"หา file ไม่เจอ: {file_name} (folder={folder}) ใน {roots}\n"
+        f"csv ที่เจอใน Drive:\n  {hint}\n"
+        f"→ แก้ DATA_FILE ให้ตรงกับชื่อจริง หรือตั้ง DATA_FOLDER = None")
 
 
-DATA_DIR = find_folder(DATA_FOLDER, SEARCH_ROOTS)           # path folder ข้อมูล
-INPUT_PATH = os.path.join(DATA_DIR, DATA_FILE)              # path file ข้อมูล
-assert os.path.isfile(INPUT_PATH), (                        # ถ้าไม่มี file ใน folder ให้หยุด
-    f"ไม่มี {DATA_FILE} ใน {DATA_DIR} — file ที่มี: "
-    f"{[os.path.basename(f) for f in glob.glob(os.path.join(DATA_DIR, '*.csv'))]}"  # บอก csv ที่มีจริงให้เทียบชื่อ
-)
-OUTPUT_PATH = os.path.join(DATA_DIR, DATA_FILE.replace(".csv", "_clean.csv"))  # file ผลลัพธ์ไว้ folder เดียวกัน
+INPUT_PATH = find_file(DATA_FILE, SEARCH_ROOTS, DATA_FOLDER)  # path file ข้อมูล
+DATA_DIR = os.path.dirname(INPUT_PATH)                      # folder ที่ file อยู่
+OUTPUT_PATH = os.path.join(DATA_DIR, "UCI_Credit_Card_clean.csv")  # file ผลลัพธ์ไว้ folder เดียวกัน
 
 print("Folder    :", DATA_DIR)                              # แสดงที่อยู่จริงของ folder
 print("Input     :", INPUT_PATH)                            # แสดงที่อยู่จริงของ file ข้อมูล
