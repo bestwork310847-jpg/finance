@@ -1,17 +1,20 @@
 # Part 1 — ทำความสะอาดข้อมูล (UCI Credit Card Default)
 
-รันด้วย: `pip install pandas && python part1_data_cleaning.py`
-ผลลัพธ์: `<ชื่อไฟล์เดิม>_clean.csv` ในโฟลเดอร์เดียวกับไฟล์ต้นฉบับ (30,000 แถว, 35 คอลัมน์)
+รันบน **Google Colab** โดยอ่านไฟล์จาก Google Drive
+ผลลัพธ์: `UCI_Credit_Card_clean.csv` บันทึกไว้ folder เดียวกับไฟล์ต้นฉบับใน Drive (30,000 แถว, 35 คอลัมน์)
 
-## การตั้ง path ไฟล์
-แก้ตัวแปร `DATA_FILE` ด้านบนของสคริปต์ หรือส่ง path ตอนรัน `python part1_data_cleaning.py "path/ไฟล์.csv"`
+## การตั้ง path ไฟล์ (Google Drive)
+1. อัปโหลด `UCI_Credit_Card.csv` ไว้ใน folder ไหนก็ได้ใน Drive เช่น `MyDrive/งาน/UCI_Credit_Card/`
+2. ตั้งชื่อ folder ให้ตรงกับ `DATA_FOLDER` ในสคริปต์ (ค่าเริ่มต้น `"UCI_Credit_Card"`)
+3. รัน cell แล้ว Colab จะขออนุญาตเชื่อม Drive
 
-| ที่อยู่ของไฟล์ | ตัวอย่าง |
-|---|---|
-| Windows | `DATA_FILE = r"C:\Users\ชื่อคุณ\Downloads\UCI_Credit_Card.csv"` (ต้องมี `r` นำหน้า ไม่งั้น `\U` จะ error) หรือใช้ `/` แทน `\` ก็ได้ |
-| Mac / Linux | `DATA_FILE = "/Users/ชื่อคุณ/Downloads/UCI_Credit_Card.csv"` |
-| Google Colab | อัปโหลดไฟล์ทางแถบซ้าย แล้วใช้ `DATA_FILE = "/content/UCI_Credit_Card.csv"` |
-| อยู่โฟลเดอร์เดียวกับสคริปต์ | `DATA_FILE = "UCI_Credit_Card.csv"` |
+สคริปต์จะ:
+- `drive.mount(...)` เชื่อม Drive เข้ากับ `/content/drive`
+- `find_folder` ใช้ `os.walk` ไล่หา folder ชื่อ `DATA_FOLDER` ทุกชั้นใน `MyDrive` (ข้าม folder ซ่อน) ไม่ต้องพิมพ์ path เต็มเอง
+- เช็กว่ามี `DATA_FILE` อยู่ใน folder จริง ถ้าไม่มีจะหยุดและแสดงชื่อไฟล์ .csv ที่มีอยู่ให้เทียบ
+- พิมพ์ path จริงของ folder, input และ output ออกมาให้ตรวจ
+
+ถ้ารันนอก Colab (ไม่มี `google.colab`) จะค้นหา folder จาก folder ที่รันแทน
 
 ## สรุปสิ่งที่พบและวิธีจัดการ
 

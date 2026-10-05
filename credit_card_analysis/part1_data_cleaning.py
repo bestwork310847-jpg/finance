@@ -10,45 +10,49 @@ Part 1 — ทำความสะอาดข้อมูล (Data Cleaning)
     5. ตรวจค่าตัวเลขที่ดูแปลก (BILL_AMT ติดลบ, ช่วงอายุ, วงเงิน)
     6. จัดการแต่ละปัญหาตามที่ตัดสินใจไว้ แล้วบันทึกไฟล์ที่สะอาดแล้ว
 
-วิธีรัน
-    pip install pandas
-    python part1_data_cleaning.py                       # ใช้ไฟล์ตาม DATA_FILE ด้านล่าง
-    python part1_data_cleaning.py path/to/file.csv      # หรือระบุไฟล์ตอนรัน
+วิธีรัน (Google Colab)
+    1. อัปโหลด UCI_Credit_Card.csv ไว้ใน Google Drive ใน folder ชื่อตาม DATA_FOLDER
+    2. วางโค้ดนี้ใน cell แล้วรัน — Colab จะขออนุญาตเชื่อม Drive ครั้งแรก
 """
 
-import sys
-from pathlib import Path
+import glob                                                 # หา file ด้วย pattern
+import os                                                   # จัดการ path / เดิน folder
 
-import pandas as pd
+import pandas as pd                                         # จัดการตารางข้อมูล
 
-# ---- ตั้งค่า path ของไฟล์ข้อมูล (แก้ตรงนี้ได้เลย) ----------------------------
-# ใส่ได้ทั้ง path เต็มหรือ path แบบสัมพัทธ์ เช่น
-#   Windows : r"C:\Users\ชื่อคุณ\Downloads\UCI_Credit_Card.csv"   (ใส่ r นำหน้า)
-#   Mac     : "/Users/ชื่อคุณ/Downloads/UCI_Credit_Card.csv"
-#   Colab   : "/content/UCI_Credit_Card.csv"
-#   ไฟล์อยู่โฟลเดอร์เดียวกับที่รัน : "UCI_Credit_Card.csv"
-DATA_FILE = "data/UCI_Credit_Card.csv"
+# ---------- ตั้งค่า (แก้ตรงนี้) ----------
+DATA_FOLDER = "UCI_Credit_Card"                             # ชื่อ folder ใน Drive ที่เก็บ file ข้อมูล
+DATA_FILE = "UCI_Credit_Card.csv"                           # ชื่อ file ข้อมูล
 
-
-def resolve_input_path() -> Path:
-    # ถ้าส่ง path .csv มาตอนรัน (python part1_data_cleaning.py file.csv) ให้ใช้ตัวนั้น
-    # ต้องเช็ก .csv เพราะใน Jupyter/Colab sys.argv จะมีค่าแปลก ๆ อย่าง "-f ..." ติดมา
-    args = [a for a in sys.argv[1:] if a.lower().endswith(".csv")]
-    path = Path(args[0] if args else DATA_FILE).expanduser()
-    if not path.is_absolute() and not path.exists():
-        # path สัมพัทธ์: ถ้าหาจากโฟลเดอร์ที่รันไม่เจอ ลองหาจากโฟลเดอร์ของสคริปต์
-        try:
-            path = Path(__file__).resolve().parent / path
-        except NameError:  # Jupyter ไม่มี __file__
-            pass
-    if not path.exists():
-        sys.exit(f"ไม่พบไฟล์: {path}\nแก้ DATA_FILE ในสคริปต์ หรือระบุ path ตอนรัน")
-    return path
+# ---------- เชื่อม Google Drive ----------
+try:
+    from google.colab import drive                          # module ของ Colab
+    drive.mount("/content/drive", force_remount=False)      # เชื่อม Drive เข้ากับ /content/drive
+    SEARCH_ROOTS = ["/content/drive/MyDrive"]               # จุดเริ่มค้นหา = Drive ของฉัน
+except ImportError:                                         # ไม่ได้รันบน Colab (เช่นรันในเครื่อง)
+    SEARCH_ROOTS = [os.getcwd()]                            # ค้นหาจาก folder ที่รันแทน
 
 
-INPUT_PATH = resolve_input_path()
-# ไฟล์ผลลัพธ์บันทึกไว้โฟลเดอร์เดียวกับไฟล์ต้นฉบับ
-OUTPUT_PATH = INPUT_PATH.with_name(INPUT_PATH.stem + "_clean.csv")
+def find_folder(name, roots):                               # function หา folder ตามชื่อ
+    for root in roots:                                      # ไล่ทุกจุดเริ่มค้นหา
+        for dirpath, dirnames, _ in os.walk(root):          # เดินลงทุก folder ย่อย
+            dirnames[:] = [d for d in dirnames if not d.startswith(".")]  # ข้าม folder ซ่อนเพื่อความเร็ว
+            if os.path.basename(dirpath) == name:           # ถ้าชื่อ folder ตรงกับที่หา
+                return dirpath                              # คืน path ทันที
+    raise FileNotFoundError(f"หา folder ไม่เจอ: {name}")    # ถ้าไม่เจอให้หยุดพร้อมบอกชื่อ
+
+
+DATA_DIR = find_folder(DATA_FOLDER, SEARCH_ROOTS)           # path folder ข้อมูล
+INPUT_PATH = os.path.join(DATA_DIR, DATA_FILE)              # path file ข้อมูล
+assert os.path.isfile(INPUT_PATH), (                        # ถ้าไม่มี file ใน folder ให้หยุด
+    f"ไม่มี {DATA_FILE} ใน {DATA_DIR} — file ที่มี: "
+    f"{[os.path.basename(f) for f in glob.glob(os.path.join(DATA_DIR, '*.csv'))]}"  # บอก csv ที่มีจริงให้เทียบชื่อ
+)
+OUTPUT_PATH = os.path.join(DATA_DIR, DATA_FILE.replace(".csv", "_clean.csv"))  # file ผลลัพธ์ไว้ folder เดียวกัน
+
+print("Folder    :", DATA_DIR)                              # แสดงที่อยู่จริงของ folder
+print("Input     :", INPUT_PATH)                            # แสดงที่อยู่จริงของ file ข้อมูล
+print("Output    :", OUTPUT_PATH)                           # แสดงที่ที่จะบันทึก file สะอาด
 
 # รหัสที่ "เอกสารต้นฉบับ" (UCI data dictionary) อธิบายไว้ — ใช้เทียบหารหัสแปลกปลอม
 DOCUMENTED_CODES = {
@@ -76,7 +80,7 @@ def section(title: str) -> None:
 # ----------------------------------------------------------------------
 # 1) โหลดข้อมูล
 # ----------------------------------------------------------------------
-def load_data(path: Path) -> pd.DataFrame:
+def load_data(path: str) -> pd.DataFrame:
     # na_values: นับสตริงที่มักใช้แทน "ไม่มีข้อมูล" ให้เป็น NaN ด้วย
     df = pd.read_csv(path, na_values=["", " ", "NA", "N/A", "null", "?"])
     section("1) โครงสร้างข้อมูล")
