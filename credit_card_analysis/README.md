@@ -96,3 +96,19 @@
 
 - **เก็บ 19:** PAY_1–PAY_6, MAX_DELAY, LIMIT_BAL, PAY_AMT1–PAY_AMT6, AVG_UTIL, PAY_RATIO, UTIL_TREND, EDUCATION, AGE
 - **ตัด 17:** DELAY_1–DELAY_6 (ซ้ำ), N_LATE_MONTHS (สหสัมพันธ์ 0.76 กับ PAY_1), BILL_AMT1–BILL_AMT6, SEX, MARRIAGE, HAS_CREDIT_BALANCE, DUP_PROFILE (IV < 0.02)
+
+---
+
+# Part 5 — แบบจำลอง: Logistic Regression + Gradient Boosting
+
+รัน `part5_models.py` — แบ่ง train 70% / test 30% (stratified, seed 42) ใช้ 19 ตัวแปรจาก Part 4
+
+| | Logistic Regression (WoE) | Gradient Boosting |
+|---|---:|---:|
+| AUC ชุดฝึก | 0.780 | 0.815 |
+| AUC ชุดทดสอบ | 0.770 | 0.780 |
+| Gini | 0.540 | 0.560 |
+| KS | 0.404 | 0.417 |
+| Recall / Precision (จุดตัดที่ F1 สูงสุดจากชุดฝึก) | 54% / 52% | 57% / 51% |
+
+WoE คำนวณจากชุดฝึกเท่านั้นแล้วนำไปใช้กับชุดทดสอบ เพื่อกันข้อมูลรั่ว
