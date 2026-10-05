@@ -177,6 +177,13 @@ coef["ทิศ"] = np.where(coef["เบต้า"] < 0, "ถูกต้อง
 print("\n=== 2) เบต้าของ Logistic Regression (เรียงตามขนาด) ===")
 print(coef.sort_values("|เบต้า|", ascending=False).drop(columns="|เบต้า|").round(3).to_string(index=False))
 
+# สมการ: z = b0 + Σ βi × WoE_i  ,  P(ผิดนัด) = 1 / (1 + e^(−z))
+b0 = logit.intercept_[0]
+terms = " ".join(f"{'+' if c >= 0 else '−'} {abs(c):.4f}×WoE({f})" for f, c in zip(FEATURES, logit.coef_[0]))
+print("\n=== สมการ Logistic Regression ===")
+print(f"z = {b0:.4f} {terms}")
+print("P(ผิดนัด) = 1 / (1 + e^(−z))")
+
 # ----------------------------------------------------------------------
 # 7) ความสำคัญของตัวแปรใน Gradient Boosting (permutation importance บนชุดทดสอบ)
 #    = AUC ลดลงเท่าไรเมื่อสลับค่าตัวแปรนั้นแบบสุ่ม (ลดมาก = สำคัญมาก)
