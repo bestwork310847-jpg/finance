@@ -85,3 +85,14 @@
 | `UTIL_TREND` แนวโน้มใช้วงเงิน | ความชันของอัตราใช้วงเงิน เม.ย.→ก.ย. (จุด%/เดือน) | 16.1% (เพิ่มขึ้น) → 29.6% (ลดลง) | 0.554 |
 
 เทียบ: `PAY_1` อย่างเดียว AUC 0.690 — คุณลักษณะที่ดูประวัติ 6 เดือน (`N_LATE_MONTHS`, `MAX_DELAY`) ทำนายได้ดีกว่า
+
+---
+
+# Part 4 — คัดเลือกตัวแปรด้วย WoE / IV
+
+รัน `part4_woe_iv.py` (ต้องมี `UCI_Credit_Card_features.csv` จาก Part 3) — ได้ตาราง IV เรียง Rank, ตาราง WoE ต่อ Bin, และผลเก็บ/ตัด พร้อมเหตุผล
+
+กฎคัดเลือก: (1) IV < 0.02 → ตัด (2) `DELAY_i` ซ้ำกับ `PAY_i` → ตัด (3) สหสัมพันธ์ของ WoE > 0.7 กับตัวที่ IV สูงกว่า → ตัด
+
+- **เก็บ 19:** PAY_1–PAY_6, MAX_DELAY, LIMIT_BAL, PAY_AMT1–PAY_AMT6, AVG_UTIL, PAY_RATIO, UTIL_TREND, EDUCATION, AGE
+- **ตัด 17:** DELAY_1–DELAY_6 (ซ้ำ), N_LATE_MONTHS (สหสัมพันธ์ 0.76 กับ PAY_1), BILL_AMT1–BILL_AMT6, SEX, MARRIAGE, HAS_CREDIT_BALANCE, DUP_PROFILE (IV < 0.02)

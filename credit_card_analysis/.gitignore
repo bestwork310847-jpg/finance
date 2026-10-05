@@ -1,2 +1,4 @@
 data/UCI_Credit_Card_clean.csv
 data/UCI_Credit_Card_features.csv
+data/woe_table.csv
+data/iv_selection.csv
