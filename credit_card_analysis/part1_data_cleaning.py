@@ -6,14 +6,14 @@ Part 1 — ทำความสะอาดข้อมูล (Data Cleaning)
     1. โหลดข้อมูลและตรวจโครงสร้าง (จำนวนแถว/คอลัมน์, ชนิดข้อมูล)
     2. หาค่าที่หายไป ทั้งแบบ "ชัดเจน" (NaN/ช่องว่าง) และแบบ "แฝง" (รหัสที่แปลว่าไม่ทราบ)
     3. หารหัสซ้ำ — ID ซ้ำ, แถวซ้ำทั้งแถว, และแถวที่ข้อมูลเหมือนกันแต่ ID ต่างกัน
-    4. หารหัสที่เอกสารไม่ได้อธิบายไว้ (EDUCATION 0/5/6, MARRIAGE 0, PAY_x = -2/0)
+    4. หารหัสที่เอกสารไม่ได้อธิบายไว้ (EDUCATION 0, MARRIAGE 0, PAY_x = -2/0)
     5. ตรวจค่าตัวเลขที่ดูแปลก (BILL_AMT ติดลบ, ช่วงอายุ, วงเงิน)
     6. จัดการแต่ละปัญหาตามที่ตัดสินใจไว้ แล้วบันทึกไฟล์ที่สะอาดแล้ว
 
 วิธีรัน
     pip install pandas
-    python part1_data_cleaning.py                       # ใช้ data/UCI_Credit_Card.csv
-    python part1_data_cleaning.py path/to/file.csv      # ระบุไฟล์เอง
+    python part1_data_cleaning.py                       # ใช้ไฟล์ตาม DATA_FILE ด้านล่าง
+    python part1_data_cleaning.py path/to/file.csv      # หรือระบุไฟล์ตอนรัน
 """
 
 import sys
@@ -21,14 +21,40 @@ from pathlib import Path
 
 import pandas as pd
 
-BASE_DIR = Path(__file__).resolve().parent
-INPUT_PATH = Path(sys.argv[1]) if len(sys.argv) > 1 else BASE_DIR / "data" / "UCI_Credit_Card.csv"
-OUTPUT_PATH = BASE_DIR / "data" / "UCI_Credit_Card_clean.csv"
+# ---- ตั้งค่า path ของไฟล์ข้อมูล (แก้ตรงนี้ได้เลย) ----------------------------
+# ใส่ได้ทั้ง path เต็มหรือ path แบบสัมพัทธ์ เช่น
+#   Windows : r"C:\Users\ชื่อคุณ\Downloads\UCI_Credit_Card.csv"   (ใส่ r นำหน้า)
+#   Mac     : "/Users/ชื่อคุณ/Downloads/UCI_Credit_Card.csv"
+#   Colab   : "/content/UCI_Credit_Card.csv"
+#   ไฟล์อยู่โฟลเดอร์เดียวกับที่รัน : "UCI_Credit_Card.csv"
+DATA_FILE = "data/UCI_Credit_Card.csv"
+
+
+def resolve_input_path() -> Path:
+    # ถ้าส่ง path .csv มาตอนรัน (python part1_data_cleaning.py file.csv) ให้ใช้ตัวนั้น
+    # ต้องเช็ก .csv เพราะใน Jupyter/Colab sys.argv จะมีค่าแปลก ๆ อย่าง "-f ..." ติดมา
+    args = [a for a in sys.argv[1:] if a.lower().endswith(".csv")]
+    path = Path(args[0] if args else DATA_FILE).expanduser()
+    if not path.is_absolute() and not path.exists():
+        # path สัมพัทธ์: ถ้าหาจากโฟลเดอร์ที่รันไม่เจอ ลองหาจากโฟลเดอร์ของสคริปต์
+        try:
+            path = Path(__file__).resolve().parent / path
+        except NameError:  # Jupyter ไม่มี __file__
+            pass
+    if not path.exists():
+        sys.exit(f"ไม่พบไฟล์: {path}\nแก้ DATA_FILE ในสคริปต์ หรือระบุ path ตอนรัน")
+    return path
+
+
+INPUT_PATH = resolve_input_path()
+# ไฟล์ผลลัพธ์บันทึกไว้โฟลเดอร์เดียวกับไฟล์ต้นฉบับ
+OUTPUT_PATH = INPUT_PATH.with_name(INPUT_PATH.stem + "_clean.csv")
 
 # รหัสที่ "เอกสารต้นฉบับ" (UCI data dictionary) อธิบายไว้ — ใช้เทียบหารหัสแปลกปลอม
 DOCUMENTED_CODES = {
     "SEX": {1, 2},                        # 1=ชาย, 2=หญิง
-    "EDUCATION": {1, 2, 3, 4},            # 1=ป.โท+, 2=ป.ตรี, 3=ม.ปลาย, 4=อื่น ๆ
+    # 1=บัณฑิตวิทยาลัย, 2=มหาวิทยาลัย, 3=ม.ปลาย, 4=อื่น ๆ, 5=ไม่ทราบ, 6=ไม่ทราบ
+    "EDUCATION": {1, 2, 3, 4, 5, 6},
     "MARRIAGE": {1, 2, 3},                # 1=สมรส, 2=โสด, 3=อื่น ๆ
     # PAY_x: -1 = จ่ายตรงเวลา, 1..9 = ค้างชำระ 1..9 เดือน (เอกสารไม่พูดถึง -2 และ 0)
     "PAY": {-1, 1, 2, 3, 4, 5, 6, 7, 8, 9},
@@ -72,12 +98,12 @@ def check_missing(df: pd.DataFrame) -> None:
 
     # ค่าหายไปแบบแฝง: รหัสที่ไม่ได้บอกว่าเป็นอะไร ก็คือ "ไม่ทราบ" นั่นเอง
     hidden = {
-        "EDUCATION = 0/5/6 (ไม่ทราบ)": int(df["EDUCATION"].isin([0, 5, 6]).sum()),
+        "EDUCATION = 0/5/6 (ไม่ทราบ/ไม่มีในเอกสาร)": int(df["EDUCATION"].isin([0, 5, 6]).sum()),
         "MARRIAGE = 0 (ไม่ทราบ)": int((df["MARRIAGE"] == 0).sum()),
     }
     print("\nค่าที่หายไปแบบแฝง (ซ่อนอยู่ในรูปของรหัส):")
     for k, v in hidden.items():
-        print(f"  {k:<30} {v:>6} แถว ({v / len(df):.2%})")
+        print(f"  {k:<40} {v:>6} แถว ({v / len(df):.2%})")
 
 
 # ----------------------------------------------------------------------
@@ -146,8 +172,10 @@ def clean(df: pd.DataFrame, dup_mask: pd.Series) -> pd.DataFrame:
     df["EDUCATION_UNKNOWN"] = df["EDUCATION"].isin([0, 5, 6]).astype(int)
     df["MARRIAGE_UNKNOWN"] = (df["MARRIAGE"] == 0).astype(int)
 
-    # 6.3 EDUCATION 0/5/6 -> 4 (อื่น ๆ) และ MARRIAGE 0 -> 3 (อื่น ๆ)
-    df["EDUCATION"] = df["EDUCATION"].replace({0: 4, 5: 4, 6: 4})
+    # 6.3 EDUCATION: 5 และ 6 ความหมายเดียวกัน ("ไม่ทราบ") ส่วน 0 ไม่มีในเอกสาร
+    #     -> รวมทั้งสามเป็น 5 = "ไม่ทราบ" (ไม่รวมกับ 4 เพราะ "อื่น ๆ" ≠ "ไม่ทราบ")
+    #     MARRIAGE 0 ไม่มีในเอกสารและไม่มีรหัส "ไม่ทราบ" -> รวมกับ 3 (อื่น ๆ)
+    df["EDUCATION"] = df["EDUCATION"].replace({0: 5, 6: 5})
     df["MARRIAGE"] = df["MARRIAGE"].replace({0: 3})
     print(f"EDUCATION หลังรวมรหัส: {df['EDUCATION'].value_counts().sort_index().to_dict()}")
     print(f"MARRIAGE  หลังรวมรหัส: {df['MARRIAGE'].value_counts().sort_index().to_dict()}")
