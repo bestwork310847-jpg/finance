@@ -141,3 +141,49 @@ print(f"\n=== 4) ตัด {', '.join(SENSITIVE)} ออก ===")
 print(f"AUC ทดสอบ: ใช้ครบ {auc_all:.4f} -> ตัดออก {auc_fair:.4f} (ลดลง {auc_all - auc_fair:.4f})")
 
 scorecard.to_csv(os.path.join(os.path.dirname(DATA_PATH), "scorecard.csv"), index=False)
+
+# ----------------------------------------------------------------------
+# 5) ระดับความเสี่ยงของลูกค้าทั้งหมด (ชุดฝึก + ชุดทดสอบ)
+#    ใช้ดูภาพรวมพอร์ต ส่วนการประเมินความแม่นให้ใช้ตารางชุดทดสอบด้านบน
+# ----------------------------------------------------------------------
+W_all = pd.concat([W_train, W_test])                           # WoE ของลูกค้าทุกคน
+y_all = pd.concat([y_train, y_test])                           # ผลจริงของลูกค้าทุกคน
+score_all = pd.Series(to_score(logit.decision_function(W_all)), index=W_all.index).round()
+
+t = pd.DataFrame({"g": score_all.map(grade_of), "y": y_all}).groupby("g")["y"].agg(["size", "sum", "mean"])
+t = t.reindex([x[0] for x in GRADES])
+all_table = pd.DataFrame({
+    "ระดับ": t.index,
+    "จำนวน": t["size"].values,
+    "% ของลูกค้า": t["size"].values / len(score_all) * 100,
+    "ผิดนัด": t["sum"].values,
+    "อัตราผิดนัด (%)": t["mean"].values * 100,
+})
+print(f"\n=== 5) ระดับความเสี่ยง: ลูกค้าทั้งหมด {len(score_all):,} คน ===")
+print(all_table.round(1).to_string(index=False))
+
+lo = scorecard.groupby("ตัวแปร")["แต้ม"].min().sum()            # คะแนนต่ำสุดที่เป็นไปได้
+hi = scorecard.groupby("ตัวแปร")["แต้ม"].max().sum()            # คะแนนสูงสุดที่เป็นไปได้
+print(f"\nคะแนนที่เป็นไปได้: {lo} – {hi}  |  ลูกค้าจริง: {score_all.min():.0f} – {score_all.max():.0f} "
+      f"(มัธยฐาน {score_all.median():.0f})  |  สเกลอ้างอิง {BASE} = odds {BASE_ODDS}:1")
+
+# ----------------------------------------------------------------------
+# 6) น้ำหนักของคะแนน: แต่ละเรื่อง / แต่ละตัวแปร
+# ----------------------------------------------------------------------
+THEME = {  # จัดตัวแปรเป็นเรื่อง
+    **{c: "ประวัติการชำระ" for c in ["PAY_0", "PAY_2", "PAY_3", "PAY_4", "PAY_5", "PAY_6", "MAX_DELAY"]},
+    **{c: "ยอดชำระคืน" for c in [f"PAY_AMT{i}" for i in range(1, 7)] + ["PAY_RATIO"]},
+    **{c: "การใช้วงเงิน" for c in ["AVG_UTIL", "UTIL_TREND", "LIMIT_BAL"]},
+    **{c: "ข้อมูลส่วนบุคคล" for c in ["EDUCATION", "AGE"]},
+}
+pts_range = scorecard.groupby("ตัวแปร")["แต้ม"].agg(lambda s: s.max() - s.min())   # แต้มแกว่งได้มากสุด
+pts_sd = (-(W_test * betas) * FACTOR).std()                    # แต้มแกว่งจริงในลูกค้าชุดทดสอบ
+weight = pd.DataFrame({"เรื่อง": pts_range.index.map(THEME),
+                       "แต้มที่แกว่งได้": pts_range,
+                       "น้ำหนักช่วงแต้ม (%)": pts_range / pts_range.sum() * 100,
+                       "น้ำหนักผลจริง (%)": pts_sd / pts_sd.sum() * 100})
+print("\n=== 6) น้ำหนักรายตัวแปร ===")
+print(weight.sort_values("น้ำหนักช่วงแต้ม (%)", ascending=False).round(1).to_string())
+by_theme = weight.groupby("เรื่อง")[["แต้มที่แกว่งได้", "น้ำหนักช่วงแต้ม (%)", "น้ำหนักผลจริง (%)"]].sum()
+print("\n=== น้ำหนักแยกตามเรื่อง ===")
+print(by_theme.sort_values("น้ำหนักช่วงแต้ม (%)", ascending=False).round(1).to_string())
