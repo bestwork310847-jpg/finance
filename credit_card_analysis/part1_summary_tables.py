@@ -94,10 +94,9 @@ MEANING = {                                                 # ความหม
     "HAS_CREDIT_BALANCE": "ธง: มียอดบิลติดลบ (จ่ายเกิน)",
 }
 for i, m in enumerate(MONTHS, start=1):
-    MEANING[PAY_COLS[i - 1]] = f"สถานะชำระ {m} (-2=ไม่ใช้, -1=จ่ายเต็ม, 0=จ่ายขั้นต่ำ, 1-9=ค้าง n เดือน)"
+    MEANING[PAY_COLS[i - 1]] = f"สถานะชำระ {m} (-1=จ่ายตรงเวลา/ไม่ล่าช้า [รวม -2/-1/0], 1-8=ล่าช้า n เดือน)"
     MEANING[f"BILL_AMT{i}"] = f"ยอดบิล {m}"
     MEANING[f"PAY_AMT{i}"] = f"ยอดที่จ่าย {m}"
-    MEANING[f"DELAY_{i}"] = f"จำนวนเดือนที่ค้างชำระ {m} (0=ไม่ค้าง)"
 
 dictionary = pd.DataFrame({
     "ตัวแปร": df.columns,
@@ -149,9 +148,7 @@ for i, (col, m) in enumerate(zip(PAY_COLS, MONTHS), start=1):
     s = df[col]
     pay_rows.append({
         "เดือน": m,
-        "ไม่ใช้บัตร (-2)": int((s == -2).sum()),
-        "จ่ายเต็ม (-1)": int((s == -1).sum()),
-        "จ่ายขั้นต่ำ (0)": int((s == 0).sum()),
+        "จ่ายตรงเวลา/ไม่ล่าช้า (-1)": int((s == -1).sum()),
         "ค้าง 1 เดือน": int((s == 1).sum()),
         "ค้าง 2 เดือน": int((s == 2).sum()),
         "ค้าง 3+ เดือน": int((s >= 3).sum()),

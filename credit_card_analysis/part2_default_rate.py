@@ -76,9 +76,9 @@ show("1) อัตราผิดนัดชำระโดยรวม", pd.Da
 #    แต่ละตัวแปรได้คอลัมน์ "กลุ่ม" ที่เรียงลำดับแล้ว (ป้ายเป็นภาษาอังกฤษเพื่อให้กราฟแสดงได้ใน Colab
 #    ซึ่งไม่มี font ไทยติดมา)
 # ----------------------------------------------------------------------
-def pay_group(code):                                        # สถานะชำระ ก.ย. -> กลุ่ม
+def pay_group(code):                                        # สถานะชำระ ก.ย. -> กลุ่ม (-1 = จ่ายตรงเวลา/ไม่ล่าช้า จาก Part 1)
     if code <= 0:
-        return {-2: "No use (-2)", -1: "Paid full (-1)", 0: "Min. paid (0)"}[code]
+        return "On time (-1)"
     return "Late 1 mo" if code == 1 else "Late 2 mo" if code == 2 else "Late 3+ mo"
 
 
@@ -88,8 +88,7 @@ age_bins = [20, 25, 30, 35, 40, 50, 60, 80]
 GROUPS = {  # ชื่อตัวแปร -> (คำอธิบายไทย, ชื่อกราฟ, Series กลุ่มแบบเรียงลำดับ)
     "PAY_0": ("สถานะชำระเดือน ก.ย. (เดือนล่าสุด)", "Repayment status, Sep",
               pd.Categorical(df["PAY_0"].map(pay_group),
-                             ["No use (-2)", "Paid full (-1)", "Min. paid (0)",
-                              "Late 1 mo", "Late 2 mo", "Late 3+ mo"], ordered=True)),
+                             ["On time (-1)", "Late 1 mo", "Late 2 mo", "Late 3+ mo"], ordered=True)),
     "LIMIT_BAL": ("วงเงินบัตร (NT$)", "Credit limit (NT$ thousand)",
                   pd.cut(df["LIMIT_BAL"], limit_bins,
                          labels=["≤50", "50–100", "100–200", "200–300", "300–500", ">500"])),

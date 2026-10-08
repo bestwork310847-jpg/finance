@@ -38,7 +38,7 @@ print("ใช้ file:", CLEAN_PATH)
 # เลข 1..6 = ก.ย. ... เม.ย. (1 = เดือนล่าสุด)
 BILL = [f"BILL_AMT{i}" for i in range(1, 7)]                   # ยอดบิล 6 เดือน
 PAID = [f"PAY_AMT{i}" for i in range(1, 7)]                    # ยอดจ่าย 6 เดือน
-DELAY = [f"DELAY_{i}" for i in range(1, 7)]                    # จำนวนเดือนที่ค้าง (สร้างไว้ใน Part 1)
+PAY_STATUS = ["PAY_0", "PAY_2", "PAY_3", "PAY_4", "PAY_5", "PAY_6"]  # -1 = จ่ายตรงเวลา, 1..8 = ล่าช้า n เดือน
 
 # ----------------------------------------------------------------------
 # 1) AVG_UTIL — อัตราการใช้วงเงินเฉลี่ย
@@ -64,8 +64,9 @@ df["PAY_RATIO"] = df["PAY_RATIO"].clip(0, 1)
 # 3) MAX_DELAY — การค้างชำระที่ร้ายแรงที่สุดใน 6 เดือน (0 = ไม่เคยค้าง)
 # 4) N_LATE_MONTHS — จำนวนเดือนที่ค้างชำระ (0–6)
 # ----------------------------------------------------------------------
-df["MAX_DELAY"] = df[DELAY].max(axis=1)
-df["N_LATE_MONTHS"] = (df[DELAY] > 0).sum(axis=1)
+months_late = df[PAY_STATUS].clip(lower=0)                     # จำนวนเดือนที่ล่าช้า (-1 จ่ายตรงเวลา -> 0)
+df["MAX_DELAY"] = months_late.max(axis=1)
+df["N_LATE_MONTHS"] = (months_late > 0).sum(axis=1)
 
 # ----------------------------------------------------------------------
 # 5) UTIL_TREND — แนวโน้มการใช้วงเงิน
